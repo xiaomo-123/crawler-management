@@ -1,0 +1,323 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爬虫管理系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>爬虫任务&API任务SQLite管理系统</h1>
+            <nav>
+                <ul>
+                    <li><a href="#dashboard" class="nav-link active">仪表盘</a></li>
+                    <li><a href="#accounts" class="nav-link">账号管理</a></li>
+                    <li><a href="#tasks" class="nav-link">任务管理</a></li>
+                    <li><a href="#proxies" class="nav-link">代理管理</a></li>
+                    <li><a href="#quotas" class="nav-link">配额管理</a></li>
+                    <li><a href="#data" class="nav-link">数据管理</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <!-- 仪表盘 -->
+            <section id="dashboard" class="page active">
+                <h2>系统概览</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>账号总数</h3>
+                        <div class="stat-value" id="total-accounts">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>运行中任务</h3>
+                        <div class="stat-value" id="running-tasks">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>可用代理</h3>
+                        <div class="stat-value" id="available-proxies">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>原始数据</h3>
+                        <div class="stat-value" id="total-raw-data">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>抽样数据</h3>
+                        <div class="stat-value" id="total-sample-data">-</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>任务状态分布</h3>
+                    <canvas id="task-status-chart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>数据年份分布</h3>
+                    <canvas id="data-year-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- 账号管理 -->
+            <section id="accounts" class="page">
+                <h2>账号管理</h2>
+                <div class="actions">
+                    <button id="add-account-btn" class="btn btn-primary">添加账号</button>
+                </div>
+                <div class="table-container">
+                    <table id="accounts-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>账号名称</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="prev-accounts-page" class="btn">上一页</button>
+                    <span id="accounts-page-info">第1页，共1页</span>
+                    <button id="next-accounts-page" class="btn">下一页</button>
+                </div>
+            </section>
+
+            <!-- 任务管理 -->
+            <section id="tasks" class="page">
+                <h2>任务管理</h2>
+                <div class="actions">
+                    <button id="add-task-btn" class="btn btn-primary">创建任务</button>
+                </div>
+                <div class="table-container">
+                    <table id="tasks-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>任务名称</th>
+                                <th>账号</th>
+                                <th>类型</th>
+                                <th>状态</th>
+                                <th>进度</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="prev-tasks-page" class="btn">上一页</button>
+                    <span id="tasks-page-info">第1页，共1页</span>
+                    <button id="next-tasks-page" class="btn">下一页</button>
+                </div>
+            </section>
+
+            <!-- 代理管理 -->
+            <section id="proxies" class="page">
+                <h2>代理管理</h2>
+                <div class="actions">
+                    <button id="add-proxy-btn" class="btn btn-primary">添加代理</button>
+                </div>
+                <div class="table-container">
+                    <table id="proxies-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>类型</th>
+                                <th>地址</th>
+                                <th>状态</th>
+                                <th>策略</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="prev-proxies-page" class="btn">上一页</button>
+                    <span id="proxies-page-info">第1页，共1页</span>
+                    <button id="next-proxies-page" class="btn">下一页</button>
+                </div>
+            </section>
+
+            <!-- 配额管理 -->
+            <section id="quotas" class="page">
+                <h2>配额管理</h2>
+                <div class="actions">
+                    <button id="init-quotas-btn" class="btn btn-primary">初始化配额</button>
+                    <button id="add-quota-btn" class="btn btn-primary">添加配额</button>
+                </div>
+                <div class="table-container">
+                    <table id="quotas-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>年份范围</th>
+                                <th>存量占比</th>
+                                <th>抽样条数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 数据管理 -->
+            <section id="data" class="page">
+                <h2>数据管理</h2>
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="raw-data">原始数据</button>
+                    <button class="tab-btn" data-tab="sample-data">抽样数据</button>
+                    <button class="tab-btn" data-tab="exports">导出文件</button>
+                </div>
+
+                <!-- 原始数据 -->
+                <div id="raw-data" class="tab-content active">
+                    <div class="filter-container">
+                        <select id="raw-data-year-filter" class="filter">
+                            <option value="">所有年份</option>
+                            <option value="2018">2018</option>
+                            <option value="2019">2019</option>
+                            <option value="2020">2020</option>
+                            <option value="2021">2021</option>
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                        </select>
+                        <select id="raw-data-task-filter" class="filter">
+                            <option value="">所有任务</option>
+                            <!-- 任务选项将通过JavaScript动态加载 -->
+                        </select>
+                    </div>
+                    <div class="table-container">
+                        <table id="raw-data-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>标题</th>
+                                    <th>作者</th>
+                                    <th>发布时间</th>
+                                    <th>年份</th>
+                                    <th>任务ID</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <button id="prev-raw-data-page" class="btn">上一页</button>
+                        <span id="raw-data-page-info">第1页，共1页</span>
+                        <button id="next-raw-data-page" class="btn">下一页</button>
+                    </div>
+                </div>
+
+                <!-- 抽样数据 -->
+                <div id="sample-data" class="tab-content">
+                    <div class="actions">
+                        <button id="sample-data-btn" class="btn btn-primary">按配额抽样</button>
+                        <button id="clear-sample-data-btn" class="btn btn-danger">清空抽样数据</button>
+                    </div>
+                    <div class="filter-container">
+                        <select id="sample-data-year-filter" class="filter">
+                            <option value="">所有年份</option>
+                            <option value="2018">2018</option>
+                            <option value="2019">2019</option>
+                            <option value="2020">2020</option>
+                            <option value="2021">2021</option>
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                        </select>
+                        <select id="sample-data-task-filter" class="filter">
+                            <option value="">所有任务</option>
+                            <!-- 任务选项将通过JavaScript动态加载 -->
+                        </select>
+                    </div>
+                    <div class="table-container">
+                        <table id="sample-data-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>标题</th>
+                                    <th>作者</th>
+                                    <th>发布时间</th>
+                                    <th>年份</th>
+                                    <th>任务ID</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <button id="prev-sample-data-page" class="btn">上一页</button>
+                        <span id="sample-data-page-info">第1页，共1页</span>
+                        <button id="next-sample-data-page" class="btn">下一页</button>
+                    </div>
+                </div>
+
+                <!-- 导出文件 -->
+                <div id="exports" class="tab-content">
+                    <div class="actions">
+                        <button id="export-sample-data-btn" class="btn btn-primary">导出抽样数据</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="exports-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>文件名</th>
+                                    <th>大小</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2023 爬虫管理系统</p>
+        </footer>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modal-body">
+                <!-- 模态框内容将通过JavaScript动态加载 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/helpers.js"></script>
+    <script src="/static/js/modals.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
