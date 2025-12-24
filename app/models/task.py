@@ -2,6 +2,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from sqlalchemy.ext.declarative import declared_attr
 from app.database import Base
 
 class Task(Base):
@@ -20,6 +21,13 @@ class Task(Base):
 
     # 关联账号
     account = relationship("Account", backref="tasks")
+
+    # 使用@declared_attr创建动态关系，避免与RawData模型冲突
+    @declared_attr
+    def raw_data_list(cls):
+        # 由于RawData是分表模型，我们不能直接创建关系
+        # 这里只返回None，实际查询需要使用RawDataManager
+        return None
 
     def __repr__(self):
         return f"<Task(id={self.id}, name={self.task_name}, type={self.task_type}, status={self.status})>"

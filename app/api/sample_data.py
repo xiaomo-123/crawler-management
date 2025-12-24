@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
@@ -124,6 +124,20 @@ async def update_sample_data(data_id: int, data_update: SampleDataUpdate, db: Se
     db.refresh(db_data)
     return db_data
 
+@router.delete("/clear-all")
+async def clear_all_sample_data(db: Session = Depends(get_db)):
+    """删除所有抽样数据"""
+    try:
+        # 使用原生SQL删除所有数据
+        db.query(SampleData).delete()
+        db.commit()
+        return {"message": "所有抽样数据已清空"}
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/{data_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_sample_data(data_id: int, db: Session = Depends(get_db)):
     """删除抽样数据"""
@@ -167,25 +181,18 @@ async def clear_sample_data(db: Session = Depends(get_db)):
         raise e
 
 
-@router.get("/clear-all")
-async def clear_all_sample_data():
-    """清空所有抽样数据"""
-    print("Clearing all sample data...")
-    from app.database import SessionLocal
-    from sqlalchemy import text
-    
-    db = SessionLocal()
+@router.delete("/clear-all")
+async def clear_all_sample_data(db: Session = Depends(get_db)):    
     try:
         # 使用原生SQL删除所有数据
-        db.execute(text("DELETE FROM sample_data"))
+        db.query(SampleData).delete()
         db.commit()
         return {"message": "所有抽样数据已清空"}
     except Exception as e:
         print(f"Error: {str(e)}")
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
+
 
 @router.get("/stats/by-year")
 async def get_sample_data_stats_by_year(db: Session = Depends(get_db)):

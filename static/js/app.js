@@ -590,7 +590,9 @@ async function deleteAllRawData() {
     try {
         console.log('发送删除所有原始数据请求...');
         const response = await fetch('/api/raw-data/clear-all', {
-            method: 'GET'
+            method: 'DELETE',
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({})
         });
         console.log('响应状态:', response.status);
 
@@ -600,6 +602,7 @@ async function deleteAllRawData() {
             loadRawData();
         } else {
             const error = await response.json();
+            console.error('删除所有原始数据失败，错误详情:', error);
             showNotification(error.detail || '删除所有原始数据失败', 'error');
         }
     } catch (error) {
@@ -1198,11 +1201,36 @@ async function sampleData() {
     }
 }
 
+async function deleteSampleData(id) {
+    if (!confirm('确定要删除这条抽样数据吗？此操作不可恢复！')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/sample-data/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('抽样数据删除成功', 'success');
+            loadSampleData();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '删除抽样数据失败', 'error');
+        }
+    } catch (error) {
+        console.error('删除抽样数据失败:', error);
+        showNotification('删除抽样数据失败', 'error');
+    }
+}
+
 async function clearSampleData() {
     try {
         console.log('发送清空抽样数据请求...');
         const response = await fetch('/api/sample-data/clear-all', {
-            method: 'GET'
+            method: 'DELETE',
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({})
         });
         console.log('响应状态:', response.status);
 
@@ -1212,6 +1240,7 @@ async function clearSampleData() {
             loadSampleData();
         } else {
             const error = await response.json();
+            console.error('删除所有抽样数据失败，错误详情:', error);
             showNotification(error.detail || '清空抽样数据失败', 'error');
         }
     } catch (error) {
