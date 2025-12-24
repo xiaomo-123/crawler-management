@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict
 from app.database import get_db
 from app.models.raw_data import RawData
 from pydantic import BaseModel
@@ -40,6 +40,9 @@ class RawDataResponse(RawDataBase):
 
     class Config:
         from_attributes = True
+
+class DeleteAllResponse(BaseModel):
+    deleted_count: int
 
 # API路由
 @router.get("/", response_model=List[RawDataResponse])
@@ -134,6 +137,38 @@ async def delete_raw_data(data_id: int, db: Session = Depends(get_db)):
     db.delete(db_data)
     db.commit()
     return None
+@router.get("/delete-all")
+async def delete_all_raw_data(db: Session = Depends(get_db)):
+    """删除所有原始数据"""
+    print("Deleting all raw data...")    
+    try:
+        db.query(RawData).delete()
+        db.commit()
+        return {"message": "所有原始数据已删除"}
+    except Exception as e:
+        db.rollback()
+        raise e
+
+
+@router.get("/clear-all")
+async def clear_all_raw_data():
+    """删除所有原始数据"""
+    print("Clearing all raw data...")
+    from app.database import SessionLocal
+    from sqlalchemy import text
+    
+    db = SessionLocal()
+    try:
+        # 使用原生SQL删除所有数据
+        db.execute(text("DELETE FROM raw_data"))
+        db.commit()
+        return {"message": "所有原始数据已删除"}
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 @router.get("/stats/by-year")
 async def get_raw_data_stats_by_year(db: Session = Depends(get_db)):
@@ -160,3 +195,4 @@ async def get_raw_data_stats_by_task(db: Session = Depends(get_db)):
     ).join(Task).group_by(RawData.task_id, Task.task_name).all()
 
     return {str(task_id): {"task_name": task_name, "count": count} for task_id, task_name, count in stats}
+

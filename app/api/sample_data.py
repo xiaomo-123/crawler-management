@@ -154,12 +154,38 @@ async def sample_data(background_tasks: BackgroundTasks, db: Session = Depends(g
 
     return {"message": "抽样任务已启动"}
 
-@router.delete("/clear", status_code=status.HTTP_204_NO_CONTENT)
+@router.get("/clear")
 async def clear_sample_data(db: Session = Depends(get_db)):
     """清空抽样数据"""
-    db.query(SampleData).delete()
-    db.commit()
-    return None
+    print("清空抽样数据")
+    try:
+        db.query(SampleData).delete()
+        db.commit()
+        return {"message": "抽样数据已清空"}
+    except Exception as e:
+        db.rollback()
+        raise e
+
+
+@router.get("/clear-all")
+async def clear_all_sample_data():
+    """清空所有抽样数据"""
+    print("Clearing all sample data...")
+    from app.database import SessionLocal
+    from sqlalchemy import text
+    
+    db = SessionLocal()
+    try:
+        # 使用原生SQL删除所有数据
+        db.execute(text("DELETE FROM sample_data"))
+        db.commit()
+        return {"message": "所有抽样数据已清空"}
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 @router.get("/stats/by-year")
 async def get_sample_data_stats_by_year(db: Session = Depends(get_db)):

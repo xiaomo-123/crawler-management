@@ -436,6 +436,11 @@ function initData() {
         }
     });
 
+    // 全部删除原始数据按钮
+    document.getElementById('delete-all-raw-data-btn').addEventListener('click', function() {
+        deleteAllRawData();
+    });
+
     // 原始数据分页按钮
     document.getElementById('prev-raw-data-page').addEventListener('click', function() {
         if (currentPage.raw_data > 1) {
@@ -549,6 +554,57 @@ async function loadTaskOptions(selectId) {
         });
     } catch (error) {
         console.error('加载任务选项失败:', error);
+    }
+}
+
+// 删除原始数据
+async function deleteRawData(dataId) {
+    if (!confirm('确定要删除这条原始数据吗？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/raw-data/${dataId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('原始数据删除成功', 'success');
+            loadRawData();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '删除原始数据失败', 'error');
+        }
+    } catch (error) {
+        console.error('删除原始数据失败:', error);
+        showNotification('删除原始数据失败', 'error');
+    }
+}
+
+// 删除所有原始数据
+async function deleteAllRawData() {
+    if (!confirm('确定要删除所有原始数据吗？此操作不可恢复！')) {
+        return;
+    }
+
+    try {
+        console.log('发送删除所有原始数据请求...');
+        const response = await fetch('/api/raw-data/clear-all', {
+            method: 'GET'
+        });
+        console.log('响应状态:', response.status);
+
+        if (response.ok) {
+            const result = await response.json();
+            showNotification(result.message || '所有原始数据已删除', 'success');
+            loadRawData();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '删除所有原始数据失败', 'error');
+        }
+    } catch (error) {
+        console.error('删除所有原始数据失败:', error);
+        showNotification('删除所有原始数据失败', 'error');
     }
 }
 
@@ -1144,12 +1200,15 @@ async function sampleData() {
 
 async function clearSampleData() {
     try {
-        const response = await fetch('/api/sample-data/clear', {
-            method: 'DELETE'
+        console.log('发送清空抽样数据请求...');
+        const response = await fetch('/api/sample-data/clear-all', {
+            method: 'GET'
         });
+        console.log('响应状态:', response.status);
 
         if (response.ok) {
-            showNotification('抽样数据已清空', 'success');
+            const result = await response.json();
+            showNotification(result.message || '抽样数据已清空', 'success');
             loadSampleData();
         } else {
             const error = await response.json();
