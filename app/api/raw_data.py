@@ -167,17 +167,48 @@ async def create_raw_data(raw_data: RawDataCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(new_raw_data)  # 获取数据库生成的ID
 
-    # 如果有评论数据，插入评论表
+    # 如果有评论数据，插入评论分表
     if comments and len(comments) > 0:
+        # 从原始数据的publish_time字段提取年月
+        publish_time = raw_data.publish_time
+        if publish_time:
+            # publish_time是字符串格式，使用"-"符号分割
+            if isinstance(publish_time, str):
+                parts = publish_time.split('-')
+                if len(parts) >= 2:
+                    year = int(parts[0])
+                    month = int(parts[1])
+                else:
+                    # 如果格式不正确，使用year字段
+                    year = raw_data.year
+                    month = 1  # 默认为1月
+            else:
+                # 如果不是字符串，使用year字段
+                year = raw_data.year
+                month = 1  # 默认为1月
+        else:
+            # 如果没有publish_time，使用year字段
+            year = raw_data.year
+            month = 1  # 默认为1月
+
+        # 获取对应年月的评论分表模型
+        from app.models.comment_data import CommentDataFactory
+        comment_model = CommentDataFactory.get_model(year, month)
+
+        # 确保分表存在
+        from app.utils.comment_data_manager import CommentDataManager
+        CommentDataManager.create_table_for_year_month(year, month)
+
         for comment in comments:
-            comment_data = CommentData(
+            comment_data = comment_model(
                 author=comment.get('author'),
                 author_url=comment.get('author_url'),
                 content=comment.get('content'),
                 like_count=comment.get('like_count'),
                 time=comment.get('time'),
                 raw_data_id=new_raw_data.id,
-                year=raw_data.year
+                year=year,
+                month=month
             )
             db.add(comment_data)
 
@@ -223,12 +254,36 @@ async def update_raw_data(data_id: int, data_update: RawDataUpdate, db: Session 
 
     db.commit()
 
-    # 如果有评论数据，更新评论表
+    # 如果有评论数据，更新评论分表
     if comments is not None:
-        from app.utils.comment_data_manager import CommentDataManager
+        # 从原始数据的publish_time字段提取年月
+        publish_time = db_data.publish_time
+        if publish_time:
+            # publish_time是字符串格式，使用"-"符号分割
+            if isinstance(publish_time, str):
+                parts = publish_time.split('-')
+                if len(parts) >= 2:
+                    year = int(parts[0])
+                    month = int(parts[1])
+                else:
+                    # 如果格式不正确，使用year字段
+                    year = db_data.year
+                    month = 1  # 默认为1月
+            else:
+                # 如果不是字符串，使用year字段
+                year = db_data.year
+                month = 1  # 默认为1月
+        else:
+            # 如果没有publish_time，使用year字段
+            year = db_data.year
+            month = 1  # 默认为1月
 
         # 先删除原有评论
-        # 注意：这里应该实现删除逻辑，但为了简化，我们只处理插入
+        from app.models.comment_data import CommentDataFactory
+        comment_model = CommentDataFactory.get_model(year, month)
+        old_comments = db.query(comment_model).filter(comment_model.raw_data_id == data_id).all()
+        for comment in old_comments:
+            db.delete(comment)
 
         if comments and len(comments) > 0:
             comment_data_list = []
@@ -240,11 +295,13 @@ async def update_raw_data(data_id: int, data_update: RawDataUpdate, db: Session 
                     'like_count': comment.get('like_count'),
                     'time': comment.get('time'),
                     'raw_data_id': data_id,
-                    'year': db_data.year
+                    'year': year,
+                    'month': month
                 }
                 comment_data_list.append(comment_data)
 
             # 批量插入评论数据
+            from app.utils.comment_data_manager import CommentDataManager
             CommentDataManager.batch_insert_data(comment_data_list)
 
     db.refresh(db_data)
@@ -274,11 +331,28 @@ async def clear_all_raw_data(request: EmptyRequest = None, db: Session = Depends
         # 直接从raw_data表删除所有数据
         deleted_raw_data = db.query(RawData).delete()
 
-        # 直接从comment_data表删除所有评论数据
-        deleted_comment_data = db.query(CommentData).delete()
+        # 删除所有评论分表中的数据
+        from app.utils.comment_data_manager import CommentDataManager
+        table_names = CommentDataManager.get_table_names()
+        total_deleted_comment_data = 0
+
+        for table_name in table_names:
+            # 从表名提取年月
+            parts = table_name.split('_')
+            if len(parts) >= 3:
+                year = int(parts[2])
+                month = int(parts[3])
+
+                # 获取对应年月的评论分表模型
+                from app.models.comment_data import CommentDataFactory
+                comment_model = CommentDataFactory.get_model(year, month)
+
+                # 删除分表中的所有数据
+                deleted = db.query(comment_model).delete()
+                total_deleted_comment_data += deleted
 
         db.commit()
-        return {"message": f"所有原始数据已删除，共删除 {deleted_raw_data} 条原始数据和 {deleted_comment_data} 条评论"}
+        return {"message": f"所有原始数据已删除，共删除 {deleted_raw_data} 条原始数据和 {total_deleted_comment_data} 条评论"}
     except Exception as e:
         print(f"Error: {str(e)}")
         db.rollback()
@@ -298,7 +372,34 @@ async def delete_raw_data(data_id: int, db: Session = Depends(get_db)):
         )
 
     # 删除相关评论
-    comment_data = db.query(CommentData).filter(CommentData.raw_data_id == data_id).all()
+    # 从原始数据的publish_time字段提取年月
+    publish_time = db_data.publish_time
+    if publish_time:
+        # publish_time是字符串格式，使用"-"符号分割
+        if isinstance(publish_time, str):
+            parts = publish_time.split('-')
+            if len(parts) >= 2:
+                year = int(parts[0])
+                month = int(parts[1])
+            else:
+                # 如果格式不正确，使用year字段
+                year = db_data.year
+                month = 1  # 默认为1月
+        else:
+            # 如果不是字符串，使用year字段
+            year = db_data.year
+            month = 1  # 默认为1月
+    else:
+        # 如果没有publish_time，使用year字段
+        year = db_data.year
+        month = 1  # 默认为1月
+
+    # 根据年月获取对应的评论分表模型
+    from app.models.comment_data import CommentDataFactory
+    comment_model = CommentDataFactory.get_model(year, month)
+
+    # 从对应年月的评论分表删除评论
+    comment_data = db.query(comment_model).filter(comment_model.raw_data_id == data_id).all()
     for comment in comment_data:
         db.delete(comment)
 
@@ -313,6 +414,7 @@ async def delete_all_raw_data(db: Session = Depends(get_db)):
     print("Deleting all raw data...")    
     try:
         # 使用RawDataManager删除所有数据
+        from app.models.raw_data import RawDataFactory
         table_names = RawDataManager.get_table_names()
         years = [int(name.split('_')[-1]) for name in table_names]
 
@@ -334,6 +436,7 @@ async def clear_all_raw_data(request: EmptyRequest = None, db: Session = Depends
     
     try:
         # 使用RawDataManager删除所有数据
+        from app.models.raw_data import RawDataFactory
         table_names = RawDataManager.get_table_names()
         years = [int(name.split('_')[-1]) for name in table_names]
 
@@ -386,7 +489,7 @@ async def get_raw_data_stats_by_task(db: Session = Depends(get_db)):
 @router.get("/{data_id}/comments", response_model=List[CommentDataResponse])
 async def get_raw_data_comments(data_id: int, db: Session = Depends(get_db)):
     """获取原始数据的评论"""
-    # 直接从raw_data表查询
+    # 先从raw_data主表查询
     data = db.query(RawData).filter(RawData.id == data_id).first()
 
     if not data:
@@ -395,8 +498,34 @@ async def get_raw_data_comments(data_id: int, db: Session = Depends(get_db)):
             detail=f"原始数据ID {data_id} 不存在"
         )
 
-    # 直接从comment_data表查询评论
-    comments = db.query(CommentData).filter(CommentData.raw_data_id == data_id).all()
+    # 从原始数据的publish_time字段提取年月
+    publish_time = data.publish_time
+    if publish_time:
+        # publish_time是字符串格式，使用"-"符号分割
+        if isinstance(publish_time, str):
+            parts = publish_time.split('-')
+            if len(parts) >= 2:
+                year = int(parts[0])
+                month = int(parts[1])
+            else:
+                # 如果格式不正确，使用year字段
+                year = data.year
+                month = 1  # 默认为1月
+        else:
+            # 如果不是字符串，使用year字段
+            year = data.year
+            month = 1  # 默认为1月
+    else:
+        # 如果没有publish_time，使用year字段
+        year = data.year
+        month = 1  # 默认为1月
+
+    # 根据年月获取对应的评论分表模型
+    from app.models.comment_data import CommentDataFactory
+    comment_model = CommentDataFactory.get_model(year, month)
+
+    # 从对应年月的评论分表查询评论
+    comments = db.query(comment_model).filter(comment_model.raw_data_id == data_id).all()
 
     # 转换为响应模型
     response_data = []
