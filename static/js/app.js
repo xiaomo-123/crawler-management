@@ -422,6 +422,11 @@ function initData() {
         exportSampleData();
     });
 
+    // 导出原始数据按钮
+    document.getElementById('export-raw-data-btn').addEventListener('click', function() {
+        exportRawData();
+    });
+
     // 抽样数据按钮
     document.getElementById('sample-data-btn').addEventListener('click', function() {
         if (confirm('确定要按配额抽样数据吗？这将清空现有抽样数据。')) {
@@ -489,6 +494,40 @@ async function exportSampleData() {
                 const exportsResponse = await fetch('/api/exports/');
                 const exports = await exportsResponse.json();
                 
+                // 检查是否有新的导出文件
+                if (exports.length > 0) {
+                    clearInterval(checkInterval);
+                    showNotification('导出完成', 'success');
+                    loadExports();
+                }
+            }, 5000);
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '导出失败', 'error');
+        }
+    } catch (error) {
+        console.error('导出失败:', error);
+        showNotification('导出失败', 'error');
+    }
+}
+
+// 导出原始数据
+async function exportRawData() {
+    console.log('导出原始数据按钮被点击');
+    try {
+        console.log('开始发送API请求');
+        const response = await fetch('/api/exports/export-raw-data', {
+            method: 'POST'
+        });
+        console.log('API请求已发送，响应状态:', response.status);
+
+        if (response.ok) {
+            showNotification('导出任务已启动', 'success');
+            // 定期检查导出状态
+            const checkInterval = setInterval(async () => {
+                const exportsResponse = await fetch('/api/exports/');
+                const exports = await exportsResponse.json();
+
                 // 检查是否有新的导出文件
                 if (exports.length > 0) {
                     clearInterval(checkInterval);

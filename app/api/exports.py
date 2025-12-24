@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
-from app.services.exporter import get_export_files, export_sample_data_to_excel
+from app.services.exporter import get_export_files, export_sample_data_to_excel, export_RawData_data_to_excel
 import os
 
 router = APIRouter(prefix="/api/exports", tags=["导出文件"])
@@ -26,6 +26,13 @@ async def export_sample_data(background_tasks: BackgroundTasks):
     """导出抽样数据"""
     # 添加后台任务
     background_tasks.add_task(export_sample_data_to_excel)
+    return {"message": "导出任务已启动"}
+
+@router.post("/export-raw-data", status_code=status.HTTP_202_ACCEPTED)
+async def export_raw_data(background_tasks: BackgroundTasks):
+    """导出原始数据"""
+    # 添加后台任务
+    background_tasks.add_task(export_RawData_data_to_excel)
     return {"message": "导出任务已启动"}
 
 @router.get("/download/{filename}")
