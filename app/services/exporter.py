@@ -222,29 +222,42 @@ def get_sampled_data_with_comments(db):
         }
     # 按年份范围抽样数据
     all_sampled_data = []
-    raw_data_list = db.query(RawData).filter(
-    RawData.year >= quota.start_year,
-    RawData.year <= quota.end_year).all()
-
-        # 按年份分组
-    raw_data_by_year = {}
-    for data in raw_data_list:
-        if data.year not in raw_data_by_year:
-            raw_data_by_year[data.year] = []
-        raw_data_by_year[data.year].append(data)
-
-    # 按年份抽样
-    for year, year_data in raw_data_by_year.items():
+    # 1. 确定需要处理的年份范围
+    years = range(quota.start_year, quota.end_year + 1)
+    # 2. 按年份分片处理（每个年份单独查询，避免一次性加载所有年份数据）
+    for year in years:
         sample_num = quota_dict.get(year, {}).get("sample_num", 0)
-        if sample_num > 0 and len(year_data) > sample_num:
+        if sample_num <= 0:
+            continue  # 无需抽样，跳过该年份
+        
+        # 3. 单年份内分页查询（每次查1000条，可根据内存调整）
+        page_size = int(sample_num)  # 每页条数，按需调整
+        offset = 0
+        year_data = []  # 存储当前年份的所有数据（分页累计）
+        
+        while True:
+            # 分页查询当前年份的数据
+            batch = db.query(RawData).filter(
+                RawData.year == year  # 只查当前年份
+            ).limit(page_size).offset(offset).all()
+            
+            if not batch:
+                break  # 分页结束，没有更多数据
+            
+            year_data.extend(batch)
+            offset += page_size  # 偏移量累加，准备下一页
+            
+            # 可选：打印分页进度
+            print(f"年份 {year} 已加载 {len(year_data)} 条数据（分页偏移：{offset}）")
+        
+        # 4. 对当前年份的所有数据进行抽样
+        if len(year_data) > sample_num:
             import random
             sampled_year_data = random.sample(year_data, sample_num)
         else:
             sampled_year_data = year_data
-
-        # 打印年份和抽样数据
-        print(f"年份: {year}, 抽样数量: {len(sampled_year_data)}")
-
+        
+        print(f"年份: {year}, 总数据量: {len(year_data)}, 抽样数量: {len(sampled_year_data)}")
         # 获取关联的评论数据
         for data in sampled_year_data:
             print(f"RawData ID: {data.id}, 标题: {data.title}")
