@@ -187,9 +187,16 @@ def export_RawData_data_to_excel() -> str:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"raw_data_{timestamp}.xlsx"
         filepath = os.path.join(export_dir, filename)
-
+        with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+            # 获取所有唯一年份并排序
+            years = sorted(df['年份'].unique())
+            for year in years:
+                # 筛选当前年份的数据
+                year_df = df[df['年份'] == year]
+                # 导出到对应年份的工作表（如"2023年"）
+                year_df.to_excel(writer, sheet_name=f"{year}年", index=False)
         # 导出到Excel
-        df.to_excel(filepath, index=False)
+        # df.to_excel(filepath, index=False)
 
         print(f"导出完成: {filepath}")
         return filepath
@@ -200,13 +207,7 @@ def export_RawData_data_to_excel() -> str:
 
     finally:
         db.close()   
-def get_sampled_data_with_comments(db):
-    """
-    获取抽样数据及其关联评论
-    
-    :param db: 数据库会话
-    :return: 抽样数据列表
-    """
+def get_sampled_data_with_comments(db):    
     quota = db.query(YearQuota).first()    
     # 空值判断，直接返回空字典
     if not quota:
@@ -300,127 +301,6 @@ def get_sampled_data_with_comments(db):
     
     return all_sampled_data
 
-def export_RawData_data_to_excel1() -> str:
-    db = SessionLocal()
-
-    try:
-        # 获取年份配额信息
-        quotas = db.query(YearQuota).all()
-        quota_dict = {}
-        for quota in quotas:
-            # 为配额范围内的每个年份添加配额信息
-            for year in range(quota.start_year, quota.end_year + 1):
-                quota_dict[year] = {"stock_ratio": quota.stock_ratio, "sample_num": quota.sample_num}
-
-        # 按年份范围抽样数据
-        all_sampled_data = []
-        for quota in quotas:
-            # 获取该年份范围内的所有原始数据
-            raw_data_list = db.query(RawData).filter(
-                RawData.year >= quota.start_year,
-                RawData.year <= quota.end_year
-            ).all()
-
-            # 按年份分组
-            raw_data_by_year = {}
-            for data in raw_data_list:
-                if data.year not in raw_data_by_year:
-                    raw_data_by_year[data.year] = []
-                raw_data_by_year[data.year].append(data)
-
-            # 按年份抽样
-            for year, year_data in raw_data_by_year.items():
-                sample_num = quota_dict.get(year, {}).get("sample_num", 0)
-                if sample_num > 0 and len(year_data) > sample_num:
-                    import random
-                    sampled_year_data = random.sample(year_data, sample_num)
-                else:
-                    sampled_year_data = year_data
-
-                # 打印年份和抽样数据
-                print(f"年份: {year}, 抽样数量: {len(sampled_year_data)}")
-
-                # 获取关联的评论数据
-                for data in sampled_year_data:
-                    print(f"RawData ID: {data.id}, 标题: {data.title}")
-
-                    # 从原始数据的publish_time字段提取年月
-                    publish_time = data.publish_time
-                    if publish_time:
-                        # publish_time是字符串格式，使用"-"符号分割
-                        if isinstance(publish_time, str):
-                            parts = publish_time.split('-')
-                            if len(parts) >= 2:
-                                comment_year = int(parts[0])
-                                comment_month = int(parts[1])
-                            else:
-                                # 如果格式不正确，使用year字段
-                                comment_year = data.year
-                                comment_month = 1  # 默认为1月
-                        else:
-                            # 如果不是字符串，使用year字段
-                            comment_year = data.year
-                            comment_month = 1  # 默认为1月
-                    else:
-                        # 如果没有publish_time，使用year字段
-                        comment_year = data.year
-                        comment_month = 1  # 默认为1月
-
-                    # 获取对应年月的评论分表模型
-                    from app.models.comment_data import CommentDataFactory
-                    comment_model = CommentDataFactory.get_model(comment_year, comment_month)
-
-                    # 从对应年月的评论分表查询评论
-                    comments = db.query(comment_model).filter(comment_model.raw_data_id == data.id).all()
-
-                    print(f"  关联评论数量: {len(comments)}")
-                    for comment in comments:
-                        print(f"  评论ID: {comment.id}, 作者: {comment.author}, 内容: {comment.content[:50]}...")
-
-                    # 添加到抽样数据列表
-                    all_sampled_data.append(data)
-
-        # 转换数据为DataFrame
-        data = []
-        for item in all_sampled_data:
-            data.append({
-                "标题": item.title,
-                "内容": item.content,
-                "发布时间": item.publish_time,
-                "回答链接": item.answer_url,
-                "作者": item.author,
-                "作者链接": item.author_url,
-                "作者领域": item.author_field,
-                "作者认证": item.author_cert,
-                "作者粉丝数": item.author_fans,
-                "年份": item.year,
-                "存量占比": quota_dict.get(item.year, {}).get("stock_ratio", 0),
-                "抽样条数": quota_dict.get(item.year, {}).get("sample_num", 0)
-            })
-
-        df = pd.DataFrame(data)
-
-        # 创建导出目录
-        export_dir = os.path.join(os.getcwd(), "exports")
-        os.makedirs(export_dir, exist_ok=True)
-
-        # 生成文件名
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"raw_data_{timestamp}.xlsx"
-        filepath = os.path.join(export_dir, filename)
-
-        # 导出到Excel
-        df.to_excel(filepath, index=False)
-
-        print(f"导出完成: {filepath}")
-        return filepath
-
-    except Exception as e:
-        print(f"导出异常: {str(e)}")
-        return ""
-
-    finally:
-        db.close()   
 
 def get_export_files() -> List[Dict]:
     """获取导出文件列表"""
