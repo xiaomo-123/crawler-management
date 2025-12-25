@@ -385,6 +385,38 @@ nav a:hover, nav a.active {
     transition: width 0.3s ease;
 }
 
+/* 通知样式 */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 500;
+    z-index: 2000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(0);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: 300px;
+}
+
+.notification-success {
+    background-color: #2ecc71;
+}
+
+.notification-error {
+    background-color: #e74c3c;
+}
+
+.notification-info {
+    background-color: #3498db;
+}
+
+.notification-warning {
+    background-color: #f39c12;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .container {

@@ -1,14 +1,27 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional, Dict, Any
+import random
 from app.database import get_db
 from app.models.raw_data import RawData
 from app.models.comment_data import CommentData
+from app.models.task import Task
 from app.utils.raw_data_manager import RawDataManager
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/raw-data", tags=["raw-data"])
+
+def get_random_task_id(db: Session) -> int:
+    """获取随机任务ID"""
+    # 获取所有任务ID
+    task_ids = db.query(Task.id).all()
+    if not task_ids:
+        # 如果没有任务，返回1
+        return 1
+    # 随机选择一个任务ID
+    return random.choice(task_ids)[0]
 
 # 评论数据Pydantic模型
 class CommentDataBase(BaseModel):
@@ -542,4 +555,131 @@ async def get_raw_data_comments(data_id: int, db: Session = Depends(get_db)):
         ))
 
     return response_data
+
+# 新增导入JSON数据的API端点
+@router.post("/import-json", status_code=status.HTTP_201_CREATED)
+async def import_json_data(
+    db: Session = Depends(get_db),
+    json_data: List[Dict[str, Any]] = Body(...)
+):
+    """导入JSON格式的原始数据"""    
+    if not json_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="没有提供JSON数据"
+        )
+
+    try:
+        success_count = 0
+        error_count = 0
+        errors = []
+
+        for idx, item in enumerate(json_data):
+            try:
+                # 检查必填字段
+                if 'url' not in item:
+                    errors.append(f"第{idx+1}条数据缺少url字段")
+                    error_count += 1
+                    continue
+
+                # 检查answer_url是否已存在
+                answer_url = item['url']
+                existing_data = db.query(RawData).filter(RawData.answer_url == answer_url).first()
+                if existing_data:
+                    errors.append(f"第{idx+1}条数据的URL已存在")
+                    error_count += 1
+                    continue
+
+                # 准备数据
+                data_dict = {
+                    'title': item.get('title', ''),
+                    'content': item.get('content', ''),
+                    'answer_url': answer_url,
+                    'author': item.get('author', ''),
+                    'author_url': item.get('author_url', ''),
+                    'author_field': item.get('author_field', ''),
+                    'author_cert': item.get('author_cert', ''),
+                    'author_fans': item.get('author_fans', 0),
+                    'year': item.get('year', 2023),  # 默认年份
+                    'task_id': get_random_task_id(db),  # 随机任务ID
+                    'publish_time': item.get('publish_time', '')
+                }
+
+                # 分离评论数据
+                comments = item.get('comments_structured', [])
+
+                # 创建原始数据对象
+                new_raw_data = RawData(**data_dict)
+                db.add(new_raw_data)
+                db.commit()
+                db.refresh(new_raw_data)  # 获取数据库生成的ID
+
+                # 如果有评论数据，插入评论分表
+                if comments and len(comments) > 0:
+                    # 从原始数据的publish_time字段提取年月
+                    publish_time = data_dict.get('publish_time', '')
+                    if publish_time:
+                        # publish_time是字符串格式，使用"-"符号分割
+                        if isinstance(publish_time, str):
+                            parts = publish_time.split('-')
+                            if len(parts) >= 2:
+                                year = int(parts[0])
+                                month = int(parts[1])
+                            else:
+                                # 如果格式不正确，使用year字段
+                                year = data_dict.get('year', 2023)
+                                month = 1  # 默认为1月
+                        else:
+                            # 如果不是字符串，使用year字段
+                            year = data_dict.get('year', 2023)
+                            month = 1  # 默认为1月
+                    else:
+                        # 如果没有publish_time，使用year字段
+                        year = data_dict.get('year', 2023)
+                        month = 1  # 默认为1月
+
+                    # 获取对应年月的评论分表模型
+                    from app.models.comment_data import CommentDataFactory
+                    comment_model = CommentDataFactory.get_model(year, month)
+
+                    # 确保分表存在
+                    from app.utils.comment_data_manager import CommentDataManager
+                    CommentDataManager.create_table_for_year_month(year, month)
+
+                    for comment in comments:
+                        comment_data = comment_model(
+                            author=comment.get('author', ''),
+                            author_url=comment.get('author_url', ''),
+                            content=comment.get('content', ''),
+                            like_count=comment.get('like_count', 0),
+                            time=comment.get('time', ''),
+                            raw_data_id=new_raw_data.id,
+                            year=year,
+                            month=month
+                        )
+                        db.add(comment_data)
+
+                    db.commit()  # 提交所有评论数据
+
+                success_count += 1
+
+            except Exception as e:
+                error_count += 1
+                errors.append(f"第{idx+1}条数据处理失败: {str(e)}")
+                db.rollback()
+                continue
+
+        return {
+            "message": f"JSON数据导入完成，成功导入 {success_count} 条，失败 {error_count} 条",
+            "success_count": success_count,
+            "error_count": error_count,
+            "errors": errors
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"导入JSON数据时发生错误: {str(e)}"
+        )
 

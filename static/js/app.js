@@ -441,6 +441,11 @@ function initData() {
         }
     });
 
+    // 导入JSON数据按钮
+    document.getElementById('import-json-btn').addEventListener('click', function() {
+        showImportJsonModal();
+    });
+
     // 全部删除原始数据按钮
     document.getElementById('delete-all-raw-data-btn').addEventListener('click', function() {
         deleteAllRawData();

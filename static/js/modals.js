@@ -595,3 +595,132 @@ async function saveQuota(quotaId = null) {
         showNotification('保存配额失败', 'error');
     }
 }
+
+// 导入JSON数据模态框
+function showImportJsonModal() {
+    let title = '导入JSON数据';
+    let content = `
+        <div class="form-group">
+            <label for="import-json-file">选择JSON文件</label>
+            <input type="file" id="import-json-file" class="form-control" accept=".json">
+        </div>
+        <div class="form-group">
+            <label for="import-json-text">或者直接粘贴JSON数据</label>
+            <textarea id="import-json-text" class="form-control" rows="10" placeholder="请粘贴JSON数据"></textarea>
+        </div>
+        <div class="alert alert-info">
+            <strong>JSON数据格式说明：</strong><br>
+            数据应为对象数组，每个对象包含以下字段：<br>
+            - url (必填): 回答链接<br>
+            - title: 标题<br>
+            - content: 内容<br>
+            - author: 作者<br>
+            - author_url: 作者链接<br>
+            - author_field: 作者领域<br>
+            - author_cert: 作者认证<br>
+            - author_fans: 作者粉丝数<br>
+            - year: 年份<br>
+            - publish_time: 发布时间(YYYY-MM-DD)<br>
+            - comments_structured: 评论数据数组
+        </div>
+    `;
+
+    let footerButtons = [
+        {
+            text: '取消',
+            className: 'btn',
+            onclick: closeModal
+        },
+        {
+            text: '导入',
+            className: 'btn btn-primary',
+            onclick: function() {
+                importJsonData();
+            }
+        }
+    ];
+
+    createModal(title, content, footerButtons);
+}
+
+// 加载任务列表到导入选择框
+async function loadTasksForImport() {
+    try {
+        const response = await fetch('/api/tasks/');
+        const tasks = await response.json();
+
+        const select = document.getElementById('import-task-id');
+        tasks.forEach(task => {
+            const option = document.createElement('option');
+            option.value = task.id;
+            option.textContent = `${task.task_name} (ID: ${task.id})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('加载任务列表失败:', error);
+        showNotification('加载任务列表失败', 'error');
+    }
+}
+
+// 导入JSON数据
+async function importJsonData() {
+    const fileInput = document.getElementById('import-json-file');
+    const jsonText = document.getElementById('import-json-text').value;
+
+    let jsonData = null;
+
+    // 尝试从文件获取数据
+    if (fileInput.files && fileInput.files.length > 0) {
+        try {
+            const file = fileInput.files[0];
+            const text = await file.text();
+            jsonData = JSON.parse(text);
+        } catch (error) {
+            showNotification('解析JSON文件失败: ' + error.message, 'error');
+            return;
+        }
+    } 
+    // 尝试从文本框获取数据
+    else if (jsonText.trim()) {
+        try {
+            jsonData = JSON.parse(jsonText);
+        } catch (error) {
+            showNotification('解析JSON数据失败: ' + error.message, 'error');
+            return;
+        }
+    } 
+    // 没有提供数据
+    else {
+        showNotification('请提供JSON文件或数据', 'error');
+        return;
+    }
+
+    // 验证数据格式
+    if (!Array.isArray(jsonData)) {
+        showNotification('JSON数据应为对象数组', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/raw-data/import-json`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jsonData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showNotification(result.message, 'success');
+            closeModal();
+            loadRawData();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '导入失败', 'error');
+        }
+    } catch (error) {
+        console.error('导入JSON数据失败:', error);
+        showNotification('导入JSON数据失败', 'error');
+    }
+}
