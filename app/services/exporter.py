@@ -164,6 +164,7 @@ def export_RawData_data_to_excel() -> str:
         data = []
         for item in all_sampled_data:
             data.append({
+                 "id": item.id, 
                 "标题": item.title,
                 "内容": item.content,
                 "发布时间": item.publish_time,
@@ -174,7 +175,7 @@ def export_RawData_data_to_excel() -> str:
                 "作者认证": item.author_cert,
                 "作者粉丝数": item.author_fans,
                 "年份": item.year,
-                
+                "评论者": item.comment_details,                
             })
 
         df = pd.DataFrame(data)
@@ -293,9 +294,18 @@ def get_sampled_data_with_comments(db):
             comments = db.query(comment_model).filter(comment_model.raw_data_id == data.id).all()
 
             print(f"  关联评论数量: {len(comments)}")
+            comment_details = []
             for comment in comments:
                 print(f"  评论ID: {comment.id}, 作者: {comment.author}, 内容: {comment.content[:50]}...")
-
+                comment_info = (
+                    f"作者: {comment.author or '未知'}\n"
+                    f"作者链接: {comment.author_url or '无'}\n"
+                    f"内容: {comment.content or '无'}\n"
+                    f"点赞数: {comment.like_count or 0}\n"
+                    f"时间: {comment.time or '未知'}"
+                )
+                comment_details.append(comment_info)
+            data.comment_details = "\n\n" + "\n\n".join(comment_details) if comment_details else "无评论"    
             # 添加到抽样数据列表
             all_sampled_data.append(data)
     
