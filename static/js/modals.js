@@ -180,9 +180,15 @@ function showTaskModal(taskId = null) {
             <input type="text" id="task-name" class="form-control" placeholder="请输入任务名称">
         </div>
         <div class="form-group">
-            <label for="task-account">账号</label>
+            <label for="task-account">账号ID</label>
             <select id="task-account" class="form-control">
                 <option value="">请选择账号</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="task-crawler-param">爬虫参数ID</label>
+            <select id="task-crawler-param" class="form-control">
+                <option value="">请选择爬虫参数</option>
             </select>
         </div>
         <div class="form-group">

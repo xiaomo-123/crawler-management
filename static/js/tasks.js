@@ -44,7 +44,8 @@ async function loadTasksData() {
             tr.innerHTML = `
                 <td>${task.id}</td>
                 <td>${task.task_name}</td>
-                <td>${task.account_name.substring(0, 20)}...</td>
+                <td>${task.account_id}</td>
+                <td>${task.crawler_param_id || '-'}</td>
                 <td>${task.task_type === 'crawler' ? '爬虫' : '导出'}</td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td>

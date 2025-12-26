@@ -6,6 +6,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models.task import Task
 from app.models.account import Account
+from app.models.crawler_param import CrawlerParam
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/tasks", tags=["任务管理"])
@@ -13,7 +14,8 @@ router = APIRouter(prefix="/api/tasks", tags=["任务管理"])
 # Pydantic模型
 class TaskBase(BaseModel):
     task_name: str
-    account_name: str
+    account_id: int
+    crawler_param_id: Optional[int] = None
     task_type: str  # crawler 或 export
 
 class TaskCreate(TaskBase):
@@ -21,7 +23,8 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(BaseModel):
     task_name: Optional[str] = None
-    account_name: Optional[str] = None
+    account_id: Optional[int] = None
+    crawler_param_id: Optional[int] = None
     task_type: Optional[str] = None
     status: Optional[int] = None
     error_message: Optional[str] = None
@@ -61,12 +64,21 @@ async def get_task(task_id: int, db: Session = Depends(get_db)):
 async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     """创建新任务"""
     # 检查账号是否存在
-    account = db.query(Account).filter(Account.account_name == task.account_name).first()
+    account = db.query(Account).filter(Account.id == task.account_id).first()
     if not account:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"账号 {task.account_name} 不存在"
+            detail=f"账号ID {task.account_id} 不存在"
         )
+
+    # 如果提供了爬虫参数ID,检查是否存在
+    if task.crawler_param_id:
+        crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == task.crawler_param_id).first()
+        if not crawler_param:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"爬虫参数ID {task.crawler_param_id} 不存在"
+            )
 
     # 检查任务类型是否有效
     if task.task_type not in ["crawler", "export"]:
@@ -91,13 +103,22 @@ async def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depen
             detail=f"任务ID {task_id} 不存在"
         )
 
-    # 如果要更新账号名，检查新账号是否存在
-    if task_update.account_name and task_update.account_name != db_task.account_name:
-        account = db.query(Account).filter(Account.account_name == task_update.account_name).first()
+    # 如果要更新账号ID，检查新账号是否存在
+    if task_update.account_id is not None and task_update.account_id != db_task.account_id:
+        account = db.query(Account).filter(Account.id == task_update.account_id).first()
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"账号 {task_update.account_name} 不存在"
+                detail=f"账号ID {task_update.account_id} 不存在"
+            )
+
+    # 如果要更新爬虫参数ID，检查是否存在
+    if task_update.crawler_param_id is not None and task_update.crawler_param_id != db_task.crawler_param_id:
+        crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == task_update.crawler_param_id).first()
+        if not crawler_param:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"爬虫参数ID {task_update.crawler_param_id} 不存在"
             )
 
     # 如果要更新任务类型，检查新类型是否有效
