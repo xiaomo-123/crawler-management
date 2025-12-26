@@ -238,10 +238,30 @@ function showTaskModal(taskId = null) {
 
     // 加载账号列表
     loadAccountsForTask();
+    // 加载爬虫参数列表
+    loadCrawlerParamsForTask();
 
     // 如果是编辑模式，加载数据
     if (taskId) {
         loadTaskData(taskId);
+    }
+}
+
+// 加载爬虫参数列表到任务选择框
+async function loadCrawlerParamsForTask() {
+    try {
+        const response = await fetch('/api/crawler-params/');
+        const params = await response.json();
+
+        const select = document.getElementById('task-crawler-param');
+        params.forEach(param => {
+            const option = document.createElement('option');
+            option.value = param.id;
+            option.textContent = `ID: ${param.id} - ${param.task_type}`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('加载爬虫参数列表失败:', error);
     }
 }
 
@@ -254,8 +274,8 @@ async function loadAccountsForTask() {
         const select = document.getElementById('task-account');
         accounts.forEach(account => {
             const option = document.createElement('option');
-            option.value = account.account_name;
-            option.textContent = account.account_name.substring(0, 20) + '...';
+            option.value = account.id;
+            option.textContent = `ID: ${account.id} - ${account.account_name.substring(0, 20)}...`;
             select.appendChild(option);
         });
     } catch (error) {
@@ -270,7 +290,8 @@ async function loadTaskData(taskId) {
         const task = await response.json();
 
         document.getElementById('task-name').value = task.task_name || '';
-        document.getElementById('task-account').value = task.account_name || '';
+        document.getElementById('task-account').value = task.account_id || '';
+        document.getElementById('task-crawler-param').value = task.crawler_param_id || '';
         document.getElementById('task-type').value = task.task_type || 'crawler';
         document.getElementById('task-status').value = task.status !== undefined ? task.status : '0';
         document.getElementById('task-progress').value = task.progress !== undefined ? task.progress : '0';
@@ -284,13 +305,14 @@ async function loadTaskData(taskId) {
 // 保存任务
 async function saveTask(taskId = null) {
     const taskName = document.getElementById('task-name').value;
-    const accountName = document.getElementById('task-account').value;
+    const accountId = document.getElementById('task-account').value;
+    const crawlerParamId = document.getElementById('task-crawler-param').value;
     const taskType = document.getElementById('task-type').value;
     const taskStatus = document.getElementById('task-status').value;
     const taskProgress = document.getElementById('task-progress').value;
     const taskError = document.getElementById('task-error').value;
 
-    if (!taskName || !accountName) {
+    if (!taskName || !accountId) {
         showNotification('请填写完整信息', 'error');
         return;
     }
@@ -306,7 +328,8 @@ async function saveTask(taskId = null) {
             },
             body: JSON.stringify({
                 task_name: taskName,
-                account_name: accountName,
+                account_id: parseInt(accountId),
+                crawler_param_id: crawlerParamId ? parseInt(crawlerParamId) : null,
                 task_type: taskType,
                 status: parseInt(taskStatus),
                 progress: parseInt(taskProgress),
