@@ -6,7 +6,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=settings.PORT,
         reload=False,  # 完全禁用重载
         workers=1  # 禁用多进程模式
     )

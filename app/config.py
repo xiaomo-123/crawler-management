@@ -7,6 +7,7 @@ class Settings:
     APP_NAME: str = "爬虫管理系统"
     VERSION: str = "1.0.0"
     DEBUG: bool = True
+    PORT: int = 8000
 
     # 数据库配置
     DATABASE_URL: str = "sqlite:///./crawler_management.db"

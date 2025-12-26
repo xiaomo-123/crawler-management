@@ -10,20 +10,23 @@ from app.config import settings
 from app.database import init_db
 from app.utils.redis import init_redis
 from app.services.heartbeat import heartbeat_service
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时执行
     init_db()
-    
+    print("数据库初始化完成")
 
     # 初始化Redis
     init_redis()
-
-    # 启动心跳服务
-    await heartbeat_service.start()
+    print("Redis初始化完成")
 
     yield
+
+    # 在应用完全启动后启动心跳服务
+    await asyncio.sleep(1)
+    await heartbeat_service.start()
 
     # 关闭时执行（如果需要）
     await heartbeat_service.stop()

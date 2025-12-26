@@ -28,7 +28,7 @@ def get_db():
 def init_db():
     try:
         Base.metadata.create_all(bind=engine)
-        print("数据库初始化成功")
+        
     except Exception as e:
         # 忽略索引已存在的错误
         if "already exists" in str(e):

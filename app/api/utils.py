@@ -4,6 +4,11 @@ from app.utils.redis import reload_redis
 
 router = APIRouter(prefix="/api/utils", tags=["工具"])
 
+@router.get("/heartbeat")
+async def heartbeat():
+    """心跳接口"""
+    return {"status": "ok", "message": "服务正常"}
+
 @router.post("/reload-redis")
 async def reload_redis_config():
     """重新加载Redis配置"""
