@@ -18,6 +18,7 @@
                     <li><a href="#tasks" class="nav-link">任务管理</a></li>
                     <li><a href="#proxies" class="nav-link">代理管理</a></li>
                     <li><a href="#quotas" class="nav-link">配额管理</a></li>
+                    <li><a href="#redis-configs" class="nav-link">Redis配置</a></li>
                     <li><a href="#data" class="nav-link">数据管理</a></li>
                 </ul>
             </nav>
@@ -172,6 +173,39 @@
                             <!-- 数据将通过JavaScript动态加载 -->
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Redis配置管理 -->
+            <section id="redis-configs" class="page">
+                <h2>Redis配置管理</h2>
+                <div class="actions">
+                    <button id="add-redis-config-btn" class="btn btn-primary">添加配置</button>
+                    <button id="reload-redis-btn" class="btn btn-warning">重新加载配置</button>
+                </div>
+                <div class="table-container">
+                    <table id="redis-configs-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>配置名称</th>
+                                <th>主机地址</th>
+                                <th>端口</th>
+                                <th>数据库</th>
+                                <th>密码</th>
+                                <th>默认</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="prev-redis-configs-page" class="btn">上一页</button>
+                    <span id="redis-configs-page-info">第1页，共1页</span>
+                    <button id="next-redis-configs-page" class="btn">下一页</button>
                 </div>
             </section>
 

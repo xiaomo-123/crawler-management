@@ -12,10 +12,10 @@ class Settings:
     DATABASE_URL: str = "sqlite:///./crawler_management.db"
 
     # Redis配置
-    REDIS_HOST: str = "38.46.219.171"
-    REDIS_PORT: int = 4004
+    REDIS_HOST: str = "127.0.0.1"
+    REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    REDIS_PASSWORD: Optional[str] = "123456"
+    REDIS_PASSWORD: Optional[str] = None
 
     # CORS配置
     CORS_ORIGINS: list = ["*"]
