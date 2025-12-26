@@ -341,9 +341,19 @@ async def update_raw_data(data_id: int, data_update: RawDataUpdate, db: Session 
 async def clear_all_raw_data(request: EmptyRequest = None, db: Session = Depends(get_db)):
     """删除所有原始数据"""
     try:
+        # 获取所有task_id并打印
+        task_ids = db.query(RawData.task_id).all()
+        task_id_list = list(set([tid[0] for tid in task_ids]))
+        # print(f"即将删除的task_id列表: {task_id_list}")
+
+        # 获取与这些task_id关联的raw_data_id列表
+        raw_data_ids = db.query(RawData.id).filter(RawData.task_id.in_(task_id_list)).all()
+        raw_data_id_list = [rid[0] for rid in raw_data_ids]
+        # print(f"即将删除的raw_data_id列表: {raw_data_id_list}")
+        
         # 直接从raw_data表删除所有数据
         deleted_raw_data = db.query(RawData).delete()
-
+        # print(f"已删除 {deleted_raw_data} 条原始数据")
         # 删除所有评论分表中的数据
         from app.utils.comment_data_manager import CommentDataManager
         table_names = CommentDataManager.get_table_names()
@@ -360,8 +370,8 @@ async def clear_all_raw_data(request: EmptyRequest = None, db: Session = Depends
                 from app.models.comment_data import CommentDataFactory
                 comment_model = CommentDataFactory.get_model(year, month)
 
-                # 删除分表中的所有数据
-                deleted = db.query(comment_model).delete()
+                # 删除分表中raw_data_id在raw_data_id_list中的数据
+                deleted = db.query(comment_model).filter(comment_model.raw_data_id.in_(raw_data_id_list)).delete()
                 total_deleted_comment_data += deleted
 
         db.commit()
@@ -444,27 +454,27 @@ async def delete_all_raw_data(db: Session = Depends(get_db)):
         raise e
 
 
-@router.delete("/clear-all")
-async def clear_all_raw_data(request: EmptyRequest = None, db: Session = Depends(get_db)):  
+# @router.delete("/clear-all")
+# async def clear_all_raw_data(request: EmptyRequest = None, db: Session = Depends(get_db)):  
     
-    try:
-        # 使用RawDataManager删除所有数据
-        from app.models.raw_data import RawDataFactory
-        table_names = RawDataManager.get_table_names()
-        years = [int(name.split('_')[-1]) for name in table_names]
+#     try:
+#         # 使用RawDataManager删除所有数据
+#         from app.models.raw_data import RawDataFactory
+#         table_names = RawDataManager.get_table_names()
+#         years = [int(name.split('_')[-1]) for name in table_names]
 
-        total_deleted = 0
-        for year in years:
-            model = RawDataFactory.get_model(year)
-            deleted = db.query(model).delete()
-            total_deleted += deleted
+#         total_deleted = 0
+#         for year in years:
+#             model = RawDataFactory.get_model(year)
+#             deleted = db.query(model).delete()
+#             total_deleted += deleted
 
-        db.commit()
-        return {"message": f"所有原始数据已删除，共删除 {total_deleted} 条记录"}
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+#         db.commit()
+#         return {"message": f"所有原始数据已删除，共删除 {total_deleted} 条记录"}
+#     except Exception as e:
+#         print(f"Error: {str(e)}")
+#         db.rollback()
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/stats/by-year")

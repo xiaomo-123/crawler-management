@@ -164,6 +164,42 @@ async def process_queue(
     result = qa_crawler_service.process_queue(db, batch_size)
     return result
 
+# 获取问答爬虫URL
+@router.get("/urls", response_model=dict)
+async def get_qa_crawler_urls(count: Optional[int] = None):
+    """
+    从Redis缓存中获取问答爬虫URL
+    
+    参数:
+    - count: 要获取的URL数量，如果为None则获取所有URL
+    
+    返回:
+    - urls: URL列表
+    - count: 返回的URL数量
+    - total: 缓存中URL总数
+    
+    示例:
+    ```bash
+    # 获取所有URL
+    curl -X GET "http://localhost:8000/api/qa-crawler/urls"
+    
+    # 获取10个随机URL
+    curl -X GET "http://localhost:8000/api/qa-crawler/urls?count=10"
+    ```
+    """
+    # 获取URL
+    urls = qa_crawler_service.get_urls(count)
+    
+    # 获取URL总数
+    redis_client = qa_crawler_service._get_redis()
+    total = redis_client.scard(qa_crawler_service.REDIS_URL_KEY) if redis_client else 0
+    
+    return {
+        "urls": urls,
+        "count": len(urls),
+        "total": total
+    }
+
 # 清空问答爬虫缓存
 @router.delete("/clear", response_model=dict)
 async def clear_qa_crawler_cache():

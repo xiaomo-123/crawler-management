@@ -184,6 +184,29 @@ class QACrawlerService:
             print(f"保存数据到数据库失败: {str(e)}")
             return None
 
+    def get_urls(self, count: Optional[int] = None) -> List[str]:
+        """从Redis缓存中获取URL
+        
+        Args:
+            count: 要获取的URL数量，如果为None则获取所有URL
+        
+        Returns:
+            URL列表
+        """
+        try:
+            redis_client = self._get_redis()
+            if redis_client:
+                if count is None:
+                    # 获取所有URL
+                    return list(redis_client.smembers(self.REDIS_URL_KEY))
+                else:
+                    # 随机获取指定数量的URL
+                    return list(redis_client.srandmember(self.REDIS_URL_KEY, count))
+            return []
+        except Exception as e:
+            print(f"获取URL失败: {str(e)}")
+            return []
+
     def process_queue(self, db: Session, batch_size: int = 10) -> Dict[str, int]:
         """处理队列中的数据，批量保存到数据库"""
         try:

@@ -50,11 +50,19 @@ class CommentDataManager:
         """
         try:
             with engine.connect() as conn:
-                # 查询所有以comment_data_开头的表
-                result = conn.execute(text(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema = DATABASE() AND table_name LIKE 'comment_data_%'"
-                ))
+                # 检查是否为SQLite数据库
+                if "sqlite" in str(engine.url):
+                    # SQLite使用sqlite_master系统表
+                    result = conn.execute(text(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type='table' AND name LIKE 'comment_data_%'"
+                    ))
+                else:
+                    # MySQL使用information_schema系统表
+                    result = conn.execute(text(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_schema = DATABASE() AND table_name LIKE 'comment_data_%'"
+                    ))
                 return [row[0] for row in result]
         except Exception as e:
             print(f"获取评论表名失败: {e}")

@@ -242,7 +242,13 @@ curl -X POST "http://localhost:8000/api/qa-crawler/init"
 确认缓存是否正常：
 ```bash
 curl -X GET "http://localhost:8000/api/qa-crawler/check"
-```
+
+
+b获取所有 URL
+
+curl -X GET "http://localhost:8000/api/qa-crawler/urls"
+获取指定数量的随机 URL（例如 10 个）：
+curl -X GET "http://localhost:8000/api/qa-crawler/urls?count=10"
 
 ### 3. 提交爬虫数据
 
