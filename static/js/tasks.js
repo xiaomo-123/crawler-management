@@ -71,3 +71,32 @@ async function loadTasksData() {
         showNotification('加载任务数据失败', 'error');
     }
 }
+
+// 编辑任务
+function editTask(taskId) {
+    showTaskModal(taskId);
+}
+
+// 删除任务
+async function deleteTask(taskId) {
+    if (!confirm('确定要删除这个任务吗？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('任务删除成功', 'success');
+            loadTasksData();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '删除任务失败', 'error');
+        }
+    } catch (error) {
+        console.error('删除任务失败:', error);
+        showNotification('删除任务失败', 'error');
+    }
+}

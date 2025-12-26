@@ -58,3 +58,32 @@ async function loadAccountsData() {
         showNotification('加载账号数据失败', 'error');
     }
 }
+
+// 编辑账号
+function editAccount(accountId) {
+    showAccountModal(accountId);
+}
+
+// 删除账号
+async function deleteAccount(accountId) {
+    if (!confirm('确定要删除这个账号吗？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/accounts/${accountId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('账号删除成功', 'success');
+            loadAccountsData();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '删除账号失败', 'error');
+        }
+    } catch (error) {
+        console.error('删除账号失败:', error);
+        showNotification('删除账号失败', 'error');
+    }
+}

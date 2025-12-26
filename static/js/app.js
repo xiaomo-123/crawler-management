@@ -596,63 +596,9 @@ async function deleteExport(filename) {
     }
 }
 
-// 编辑任务
-function editTask(taskId) {
-    showTaskModal(taskId);
-}
+// 编辑任务和删除任务函数已在tasks.js中定义
 
-// 删除任务
-async function deleteTask(taskId) {
-    if (!confirm('确定要删除这个任务吗？')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/tasks/${taskId}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            showNotification('任务删除成功', 'success');
-            loadTasksData();
-        } else {
-            const error = await response.json();
-            showNotification(error.detail || '删除任务失败', 'error');
-        }
-    } catch (error) {
-        console.error('删除任务失败:', error);
-        showNotification('删除任务失败', 'error');
-    }
-}
-
-// 编辑账号
-function editAccount(accountId) {
-    showAccountModal(accountId);
-}
-
-// 删除账号
-async function deleteAccount(accountId) {
-    if (!confirm('确定要删除这个账号吗？')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/accounts/${accountId}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            showNotification('账号删除成功', 'success');
-            loadAccountsData();
-        } else {
-            const error = await response.json();
-            showNotification(error.detail || '删除账号失败', 'error');
-        }
-    } catch (error) {
-        console.error('删除账号失败:', error);
-        showNotification('删除账号失败', 'error');
-    }
-}
+// 编辑账号和删除账号函数已在accounts.js中定义
 
 // 根据状态文本获取状态值
 function getStatusValue(statusText) {
