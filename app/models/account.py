@@ -6,7 +6,7 @@ class Account(Base):
     __tablename__ = "account"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    account_name = Column(String, unique=True, nullable=False, comment="账号cookie内容")
+    account_name = Column(String, nullable=False, comment="账号cookie内容")
     status = Column(Integer, default=1, nullable=False, comment="状态：1-正常，0-禁用")
 
     def __repr__(self):

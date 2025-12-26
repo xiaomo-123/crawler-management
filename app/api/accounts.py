@@ -47,14 +47,6 @@ async def get_account(account_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=AccountResponse, status_code=status.HTTP_201_CREATED)
 async def create_account(account: AccountCreate, db: Session = Depends(get_db)):
     """创建新账号"""
-    # 检查账号名是否已存在
-    db_account = db.query(Account).filter(Account.account_name == account.account_name).first()
-    if db_account:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="账号名已存在"
-        )
-
     new_account = Account(**account.model_dump())
     db.add(new_account)
     db.commit()
