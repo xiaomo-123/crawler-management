@@ -83,3 +83,71 @@ async def clear_recommendation_cache():
         "success": success,
         "message": "缓存已清空" if success else "清空缓存失败"
     }
+
+# 检查URL并添加到队列
+@router.post("/queue/add", response_model=dict)
+async def add_url_to_queue(url: str):
+    """
+    检查URL是否在推荐页URL缓存中，不存在则添加到队列
+    """
+    from app.utils.redis import get_redis
+    from app.config import settings
+    
+    redis_client = get_redis()
+    if not redis_client:
+        raise HTTPException(status_code=500, detail="Redis连接失败")
+    
+    # 检查URL是否已存在
+    exists = redis_client.sismember(settings.REDIS_RECOMMENDATION_URLS_KEY, url)
+    
+    if not exists:
+        # 添加到队列
+        redis_client.rpush(settings.REDIS_RECOMMENDATION_QUEUE_KEY, url)
+        return {
+            "success": True,
+            "message": "URL已添加到队列",
+            "exists": False
+        }
+    
+    return {
+        "success": True,
+        "message": "URL已存在于缓存中",
+        "exists": True
+    }
+
+# 处理队列中的URL
+@router.post("/queue/process", response_model=dict)
+async def process_queue(batch_size: int = 1):
+    """
+    处理队列中的URL
+    """
+    from app.utils.redis import get_redis
+    from app.config import settings
+    
+    if batch_size <= 0:
+        raise HTTPException(status_code=400, detail="batch_size必须大于0")
+    
+    if batch_size > 100:
+        raise HTTPException(status_code=400, detail="batch_size不能超过100")
+    
+    redis_client = get_redis()
+    if not redis_client:
+        raise HTTPException(status_code=500, detail="Redis连接失败")
+    
+    # 从队列中获取URL
+    urls = redis_client.lrange(settings.REDIS_RECOMMENDATION_QUEUE_KEY, 0, batch_size - 1)
+    
+    if urls:
+        # 删除已获取的URL
+        redis_client.ltrim(settings.REDIS_RECOMMENDATION_QUEUE_KEY, batch_size, -1)
+        return {
+            "success": True,
+            "processed": len(urls),
+            "urls": [url.decode() if isinstance(url, bytes) else url for url in urls]
+        }
+    
+    return {
+        "success": True,
+        "processed": 0,
+        "urls": []
+    }
