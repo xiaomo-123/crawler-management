@@ -3,7 +3,7 @@ from datetime import datetime
 from app.database import Base
 
 class CrawlerParam(Base):
-    """爬虫参数模型"""
+    """小鲸鱼参数模型"""
     __tablename__ = "crawler_param"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="自增ID")

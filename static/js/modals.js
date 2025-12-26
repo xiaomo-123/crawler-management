@@ -186,15 +186,15 @@ function showTaskModal(taskId = null) {
             </select>
         </div>
         <div class="form-group">
-            <label for="task-crawler-param">爬虫参数ID</label>
+            <label for="task-crawler-param">小鲸鱼参数ID</label>
             <select id="task-crawler-param" class="form-control">
-                <option value="">请选择爬虫参数</option>
+                <option value="">请选择小鲸鱼参数</option>
             </select>
         </div>
         <div class="form-group">
             <label for="task-type">任务类型</label>
             <select id="task-type" class="form-control">
-                <option value="crawler">爬虫</option>
+                <option value="crawler">小鲸鱼</option>
                 <option value="export">导出</option>
             </select>
         </div>
@@ -238,7 +238,7 @@ function showTaskModal(taskId = null) {
 
     // 加载账号列表
     loadAccountsForTask();
-    // 加载爬虫参数列表
+    // 加载小鲸鱼参数列表
     loadCrawlerParamsForTask();
 
     // 如果是编辑模式，加载数据
@@ -247,7 +247,7 @@ function showTaskModal(taskId = null) {
     }
 }
 
-// 加载爬虫参数列表到任务选择框
+// 加载小鲸鱼参数列表到任务选择框
 async function loadCrawlerParamsForTask() {
     try {
         const response = await fetch('/api/crawler-params/');
@@ -261,7 +261,7 @@ async function loadCrawlerParamsForTask() {
             select.appendChild(option);
         });
     } catch (error) {
-        console.error('加载爬虫参数列表失败:', error);
+        console.error('加载小鲸鱼参数列表失败:', error);
     }
 }
 
@@ -754,9 +754,9 @@ async function importJsonData() {
     }
 }
 
-// 爬虫参数模态框
+// 小鲸鱼参数模态框
 async function showCrawlerParamModal(paramId = null) {
-    let title = paramId ? '编辑爬虫参数' : '添加爬虫参数';
+    let title = paramId ? '编辑小鲸鱼参数' : '添加小鲸鱼参数';
     let paramData = null;
 
     // 如果是编辑模式,获取参数数据
@@ -767,7 +767,7 @@ async function showCrawlerParamModal(paramId = null) {
                 paramData = await response.json();
             }
         } catch (error) {
-            console.error('获取爬虫参数失败:', error);
+            console.error('获取小鲸鱼参数失败:', error);
         }
     }
 
@@ -784,7 +784,7 @@ async function showCrawlerParamModal(paramId = null) {
             <div class="form-group">
                 <label for="task_type">任务类型</label>
                 <select id="task_type" name="task_type" class="form-control" required>
-                    <option value="crawler" ${paramData && paramData.task_type === 'crawler' ? 'selected' : ''}>爬虫</option>
+                    <option value="crawler" ${paramData && paramData.task_type === 'crawler' ? 'selected' : ''}>小鲸鱼</option>
                     <option value="export" ${paramData && paramData.task_type === 'export' ? 'selected' : ''}>导出</option>
                 </select>
             </div>
@@ -837,7 +837,7 @@ async function showCrawlerParamModal(paramId = null) {
     createModal(title, content, footerButtons);
 }
 
-// 保存爬虫参数
+// 保存小鲸鱼参数
 async function saveCrawlerParam(paramId) {
     const form = document.getElementById('crawler-param-form');
     if (!form.checkValidity()) {
@@ -869,7 +869,7 @@ async function saveCrawlerParam(paramId) {
         });
 
         if (response.ok) {
-            showNotification(paramId ? '爬虫参数更新成功' : '爬虫参数创建成功', 'success');
+            showNotification(paramId ? '小鲸鱼参数更新成功' : '小鲸鱼参数创建成功', 'success');
             closeModal();
             loadCrawlerParamsData();
         } else {
@@ -877,7 +877,7 @@ async function saveCrawlerParam(paramId) {
             showNotification(error.detail || '保存失败', 'error');
         }
     } catch (error) {
-        console.error('保存爬虫参数失败:', error);
-        showNotification('保存爬虫参数失败', 'error');
+        console.error('保存小鲸鱼参数失败:', error);
+        showNotification('保存小鲸鱼参数失败', 'error');
     }
 }

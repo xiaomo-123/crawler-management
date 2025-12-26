@@ -11,8 +11,8 @@ class Task(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     task_name = Column(String(255), nullable=False, comment="任务名称")
     account_id = Column(Integer, ForeignKey("account.id"), nullable=False, comment="关联账号ID")
-    crawler_param_id = Column(Integer, ForeignKey("crawler_param.id"), nullable=True, comment="关联爬虫参数ID")
-    task_type = Column(String(50), nullable=False, comment="任务类型：crawler-爬虫，export-Excel生成")
+    crawler_param_id = Column(Integer, ForeignKey("crawler_param.id"), nullable=True, comment="关联小鲸鱼参数ID")
+    task_type = Column(String(50), nullable=False, comment="任务类型：crawler-小鲸鱼，export-Excel生成")
     status = Column(Integer, default=0, nullable=False, comment="状态：0-等待，1-运行，2-暂停，3-失败，4-完成")
     start_time = Column(DateTime, default=datetime.now, comment="开始时间")
     end_time = Column(DateTime, nullable=True, comment="结束时间")
@@ -22,7 +22,7 @@ class Task(Base):
 
     # 关联账号
     account = relationship("Account", backref="tasks")
-    # 关联爬虫参数
+    # 关联小鲸鱼参数
     crawler_param = relationship("CrawlerParam", backref="tasks")
 
     # 使用@declared_attr创建动态关系，避免与RawData模型冲突

@@ -71,13 +71,13 @@ async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
             detail=f"账号ID {task.account_id} 不存在"
         )
 
-    # 如果提供了爬虫参数ID,检查是否存在
+    # 如果提供了小鲸鱼参数ID,检查是否存在
     if task.crawler_param_id:
         crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == task.crawler_param_id).first()
         if not crawler_param:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"爬虫参数ID {task.crawler_param_id} 不存在"
+                detail=f"小鲸鱼参数ID {task.crawler_param_id} 不存在"
             )
 
     # 检查任务类型是否有效
@@ -112,13 +112,13 @@ async def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depen
                 detail=f"账号ID {task_update.account_id} 不存在"
             )
 
-    # 如果要更新爬虫参数ID，检查是否存在
+    # 如果要更新小鲸鱼参数ID，检查是否存在
     if task_update.crawler_param_id is not None and task_update.crawler_param_id != db_task.crawler_param_id:
         crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == task_update.crawler_param_id).first()
         if not crawler_param:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"爬虫参数ID {task_update.crawler_param_id} 不存在"
+                detail=f"小鲸鱼参数ID {task_update.crawler_param_id} 不存在"
             )
 
     # 如果要更新任务类型，检查新类型是否有效

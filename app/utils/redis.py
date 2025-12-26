@@ -131,17 +131,17 @@ def reload_redis():
     return init_redis()
 
 def clear_recommendation_and_qa_crawler_cache():
-    """清空推荐页URL和问答爬虫的Redis缓存"""
+    """清空推荐页URL和问答小鲸鱼的Redis缓存"""
     try:
         redis_client = get_redis()
         if redis_client:
             # 清空推荐页URL缓存
             redis_client.delete(settings.REDIS_RECOMMENDATION_URLS_KEY)
-            # 清空问答爬虫URL缓存
+            # 清空问答小鲸鱼URL缓存
             redis_client.delete(settings.REDIS_QA_CRAWLER_URLS_KEY)
-            # 清空问答爬虫数据队列
+            # 清空问答小鲸鱼数据队列
             redis_client.delete(settings.REDIS_QA_CRAWLER_QUEUE_KEY)
-            print("已清空推荐页URL和问答爬虫缓存")
+            print("已清空推荐页URL和问答小鲸鱼缓存")
             return True
         return False
     except Exception as e:
@@ -149,7 +149,7 @@ def clear_recommendation_and_qa_crawler_cache():
         return False
 
 def init_recommendation_and_qa_crawler_cache():
-    """初始化推荐页URL和问答爬虫缓存，从raw_data表加载所有answer_url"""
+    """初始化推荐页URL和问答小鲸鱼缓存，从raw_data表加载所有answer_url"""
     try:
         # 先清空现有缓存
         clear_recommendation_and_qa_crawler_cache()
@@ -169,7 +169,7 @@ def init_recommendation_and_qa_crawler_cache():
             if redis_client:
                 # 添加到推荐页URL集合
                 redis_client.sadd(settings.REDIS_RECOMMENDATION_URLS_KEY, *url_list)
-                # 添加到问答爬虫URL集合
+                # 添加到问答小鲸鱼URL集合
                 redis_client.sadd(settings.REDIS_QA_CRAWLER_URLS_KEY, *url_list)
                 print(f"成功加载 {len(url_list)} 个URL到缓存")
                 return len(url_list)

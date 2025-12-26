@@ -16,7 +16,7 @@ import re
 from bs4 import BeautifulSoup
 
 def run_crawler_task(task_id: int):
-    """运行爬虫任务"""
+    """运行小鲸鱼任务"""
     db = SessionLocal()
     redis = get_redis()
 
@@ -158,7 +158,7 @@ def run_crawler_task(task_id: int):
         db.commit()
 
     except Exception as e:
-        print(f"爬虫任务异常: {str(e)}")
+        print(f"小鲸鱼任务异常: {str(e)}")
         task.status = 3  # 失败
         task.error_message = str(e)
         task.end_time = datetime.now()

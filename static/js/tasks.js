@@ -46,7 +46,7 @@ async function loadTasksData() {
                 <td>${task.task_name}</td>
                 <td>${task.account_id}</td>
                 <td>${task.crawler_param_id || '-'}</td>
-                <td>${task.task_type === 'crawler' ? '爬虫' : '导出'}</td>
+                <td>${task.task_type === 'crawler' ? '小鲸鱼' : '导出'}</td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td>
                     <div class="progress">

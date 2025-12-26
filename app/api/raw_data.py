@@ -599,7 +599,8 @@ async def import_json_data(
                     errors.append(f"第{idx+1}条数据的URL已存在")
                     error_count += 1
                     continue
-
+                raw_data_count = db.query(RawData).count() 
+                task_id = raw_data_count + 1   
                 # 准备数据
                 data_dict = {
                     'title': item.get('title', ''),
@@ -611,7 +612,7 @@ async def import_json_data(
                     'author_cert': item.get('author_cert', ''),
                     'author_fans': item.get('author_fans', 0),
                     'year': item.get('year', 2023),  # 默认年份
-                    'task_id': get_random_task_id(db),  # 随机任务ID
+                    'task_id': task_id,  # 随机任务ID
                     'publish_time': item.get('publish_time', '')
                 }
 

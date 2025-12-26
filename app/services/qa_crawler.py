@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 class QACrawlerService:
-    """问答爬虫服务"""
+    """问答小鲸鱼服务"""
 
     # Redis键定义（从config.py统一管理）
     REDIS_URL_KEY = settings.REDIS_QA_CRAWLER_URLS_KEY  # 存储所有URL的集合
@@ -25,7 +25,7 @@ class QACrawlerService:
         return self.redis_client
 
     def clear_cache(self) -> bool:
-        """清空问答爬虫的Redis缓存"""
+        """清空问答小鲸鱼的Redis缓存"""
         try:
             redis_client = self._get_redis()
             if redis_client:

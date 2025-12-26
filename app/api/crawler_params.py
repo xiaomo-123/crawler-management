@@ -5,12 +5,12 @@ from datetime import datetime
 from app.database import get_db
 from app.models.crawler_param import CrawlerParam
 
-router = APIRouter(prefix="/api/crawler-params", tags=["爬虫参数"])
+router = APIRouter(prefix="/api/crawler-params", tags=["小鲸鱼参数"])
 
 
 @router.get("/", response_model=List[dict])
 async def get_crawler_params(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
-    """获取爬虫参数列表"""
+    """获取小鲸鱼参数列表"""
     params = db.query(CrawlerParam).offset(skip).limit(limit).all()
     total = db.query(CrawlerParam).count()
 
@@ -35,10 +35,10 @@ async def get_crawler_params(skip: int = 0, limit: int = 20, db: Session = Depen
 
 @router.get("/{param_id}", response_model=dict)
 async def get_crawler_param(param_id: int, db: Session = Depends(get_db)):
-    """获取单个爬虫参数"""
+    """获取单个小鲸鱼参数"""
     param = db.query(CrawlerParam).filter(CrawlerParam.id == param_id).first()
     if not param:
-        raise HTTPException(status_code=404, detail="爬虫参数不存在")
+        raise HTTPException(status_code=404, detail="小鲸鱼参数不存在")
 
     return {
         "id": param.id,
@@ -57,7 +57,7 @@ async def get_crawler_param(param_id: int, db: Session = Depends(get_db)):
 
 @router.post("/")
 async def create_crawler_param(param_data: dict, db: Session = Depends(get_db)):
-    """创建爬虫参数"""
+    """创建小鲸鱼参数"""
     try:
         # 处理时间字段(小时数)
         start_time = param_data.get("start_time", 0)
@@ -84,7 +84,7 @@ async def create_crawler_param(param_data: dict, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(param)
 
-        return {"id": param.id, "message": "爬虫参数创建成功"}
+        return {"id": param.id, "message": "小鲸鱼参数创建成功"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -92,11 +92,11 @@ async def create_crawler_param(param_data: dict, db: Session = Depends(get_db)):
 
 @router.put("/{param_id}")
 async def update_crawler_param(param_id: int, param_data: dict, db: Session = Depends(get_db)):
-    """更新爬虫参数"""
+    """更新小鲸鱼参数"""
     try:
         param = db.query(CrawlerParam).filter(CrawlerParam.id == param_id).first()
         if not param:
-            raise HTTPException(status_code=404, detail="爬虫参数不存在")
+            raise HTTPException(status_code=404, detail="小鲸鱼参数不存在")
 
         # 更新字段
         if "url" in param_data:
@@ -124,7 +124,7 @@ async def update_crawler_param(param_id: int, param_data: dict, db: Session = De
 
         db.commit()
 
-        return {"message": "爬虫参数更新成功"}
+        return {"message": "小鲸鱼参数更新成功"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -132,16 +132,16 @@ async def update_crawler_param(param_id: int, param_data: dict, db: Session = De
 
 @router.delete("/{param_id}")
 async def delete_crawler_param(param_id: int, db: Session = Depends(get_db)):
-    """删除爬虫参数"""
+    """删除小鲸鱼参数"""
     try:
         param = db.query(CrawlerParam).filter(CrawlerParam.id == param_id).first()
         if not param:
-            raise HTTPException(status_code=404, detail="爬虫参数不存在")
+            raise HTTPException(status_code=404, detail="小鲸鱼参数不存在")
 
         db.delete(param)
         db.commit()
 
-        return {"message": "爬虫参数删除成功"}
+        return {"message": "小鲸鱼参数删除成功"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

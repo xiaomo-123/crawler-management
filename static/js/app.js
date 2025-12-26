@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化Redis配置管理
     initRedisConfigs();
 
-    // 初始化爬虫参数管理
+    // 初始化小鲸鱼参数管理
     initCrawlerParams();
 
     // 初始化数据管理

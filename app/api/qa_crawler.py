@@ -6,7 +6,7 @@ from app.services.qa_crawler import qa_crawler_service
 from pydantic import BaseModel, HttpUrl
 from datetime import datetime
 
-router = APIRouter(prefix="/api/qa-crawler", tags=["问答爬虫"])
+router = APIRouter(prefix="/api/qa-crawler", tags=["问答小鲸鱼"])
 
 # Pydantic模型
 class CommentData(BaseModel):
@@ -18,7 +18,7 @@ class CommentData(BaseModel):
     time: Optional[str] = None
 
 class QACrawlerData(BaseModel):
-    """问答爬虫数据模型"""
+    """问答小鲸鱼数据模型"""
     rank: Optional[int] = None
     title: Optional[str] = None
     url: HttpUrl
@@ -62,11 +62,11 @@ class SubmitResponse(BaseModel):
     message: str
     url_exists: bool
 
-# 初始化问答爬虫缓存（从raw_data加载）
+# 初始化问答小鲸鱼缓存（从raw_data加载）
 @router.post("/init", response_model=InitResponse)
 async def init_qa_crawler_cache(db: Session = Depends(get_db)):
     """
-    初始化问答爬虫缓存
+    初始化问答小鲸鱼缓存
     1. 清空现有缓存
     2. 从raw_data表加载所有answer_url到Redis
     """
@@ -81,7 +81,7 @@ async def init_qa_crawler_cache(db: Session = Depends(get_db)):
 @router.get("/check", response_model=CheckResponse)
 async def check_qa_crawler_cache():
     """
-    检查问答爬虫URL缓存是否存在
+    检查问答小鲸鱼URL缓存是否存在
     """
     exists = qa_crawler_service.url_exists("dummy") or qa_crawler_service.get_queue_size() > 0
     # 获取实际URL数量
@@ -92,13 +92,13 @@ async def check_qa_crawler_cache():
         "count": url_count
     }
 
-# 提交问答爬虫数据
+# 提交问答小鲸鱼数据
 @router.post("/submit", response_model=SubmitResponse)
 async def submit_qa_crawler_data(data: QACrawlerData):
     """
-    提交问答爬虫数据
+    提交问答小鲸鱼数据
     1. 检查URL是否已存在于缓存中
-    2. 如果不存在，将URL添加到推荐页URL和问答爬虫Redis缓存
+    2. 如果不存在，将URL添加到推荐页URL和问答小鲸鱼Redis缓存
     3. 将数据添加到生产队列
     """
     url_str = str(data.url)
@@ -107,7 +107,7 @@ async def submit_qa_crawler_data(data: QACrawlerData):
     url_exists = qa_crawler_service.url_exists(url_str)
 
     if not url_exists:
-        # 将URL添加到问答爬虫缓存
+        # 将URL添加到问答小鲸鱼缓存
         qa_crawler_service.add_url(url_str)
 
         # 将URL添加到推荐页URL缓存
@@ -171,11 +171,11 @@ async def process_queue(
     result = qa_crawler_service.process_queue(db, batch_size)
     return result
 
-# 获取问答爬虫URL
+# 获取问答小鲸鱼URL
 @router.get("/urls", response_model=dict)
 async def get_qa_crawler_urls(count: Optional[int] = None):
     """
-    从Redis缓存中获取问答爬虫URL
+    从Redis缓存中获取问答小鲸鱼URL
     
     参数:
     - count: 要获取的URL数量，如果为None则获取所有URL
@@ -207,11 +207,11 @@ async def get_qa_crawler_urls(count: Optional[int] = None):
         "total": total
     }
 
-# 清空问答爬虫缓存
+# 清空问答小鲸鱼缓存
 @router.delete("/clear", response_model=dict)
 async def clear_qa_crawler_cache():
     """
-    清空问答爬虫的Redis缓存
+    清空问答小鲸鱼的Redis缓存
     """
     success = qa_crawler_service.clear_cache()
     return {

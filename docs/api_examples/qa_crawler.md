@@ -1,10 +1,10 @@
-# 问答爬虫API文档
+# 问答小鲸鱼API文档
 
 ## API列表
 
-### 1. 初始化问答爬虫缓存
+### 1. 初始化问答小鲸鱼缓存
 
-**接口描述**: 初始化问答爬虫缓存，会先清空现有缓存，然后从raw_data表加载所有answer_url到Redis
+**接口描述**: 初始化问答小鲸鱼缓存，会先清空现有缓存，然后从raw_data表加载所有answer_url到Redis
 
 **请求方式**: POST
 
@@ -30,7 +30,7 @@ curl -X POST "http://localhost:8000/api/qa-crawler/init"   -H "Content-Type: app
 
 ### 2. 检查缓存是否存在
 
-**接口描述**: 检查问答爬虫URL缓存是否存在，并返回缓存的URL数量
+**接口描述**: 检查问答小鲸鱼URL缓存是否存在，并返回缓存的URL数量
 
 **请求方式**: GET
 
@@ -53,9 +53,9 @@ curl -X GET "http://localhost:8000/api/qa-crawler/check"   -H "Content-Type: app
 
 ---
 
-### 3. 提交问答爬虫数据
+### 3. 提交问答小鲸鱼数据
 
-**接口描述**: 提交问答爬虫数据，自动处理URL缓存和队列管理
+**接口描述**: 提交问答小鲸鱼数据，自动处理URL缓存和队列管理
 
 **请求方式**: POST
 
@@ -203,9 +203,9 @@ curl -X POST "http://localhost:8000/api/qa-crawler/queue/process?batch_size=20" 
 
 ---
 
-### 6. 清空问答爬虫缓存
+### 6. 清空问答小鲸鱼缓存
 
-**接口描述**: 清空问答爬虫的Redis缓存
+**接口描述**: 清空问答小鲸鱼的Redis缓存
 
 **请求方式**: DELETE
 
@@ -232,7 +232,7 @@ curl -X DELETE "http://localhost:8000/api/qa-crawler/clear"   -H "Content-Type: 
 
 ### 1. 初始化系统
 
-首次使用时，初始化问答爬虫缓存：
+首次使用时，初始化问答小鲸鱼缓存：
 ```bash
 curl -X POST "http://localhost:8000/api/qa-crawler/init"
 ```
@@ -250,9 +250,9 @@ curl -X GET "http://localhost:8000/api/qa-crawler/urls"
 获取指定数量的随机 URL（例如 10 个）：
 curl -X GET "http://localhost:8000/api/qa-crawler/urls?count=10"
 
-### 3. 提交爬虫数据
+### 3. 提交小鲸鱼数据
 
-爬虫程序获取数据后，通过API提交：
+小鲸鱼程序获取数据后，通过API提交：
 ```bash
 curl -X POST "http://localhost:8000/api/qa-crawler/submit"   -H "Content-Type: application/json"   -d '{
     "rank": 1,
@@ -305,7 +305,7 @@ curl -X DELETE "http://localhost:8000/api/qa-crawler/clear"
 ## 数据流程说明
 
 1. **URL缓存管理**:
-   - 系统维护两个URL缓存：问答爬虫URL缓存和推荐页URL缓存
+   - 系统维护两个URL缓存：问答小鲸鱼URL缓存和推荐页URL缓存
    - 提交数据时，如果URL不存在，会同时添加到两个缓存中
    - 避免重复处理相同的URL
 

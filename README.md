@@ -1,6 +1,6 @@
-# 爬虫任务&API任务SQLite管理系统
+# 小鲸鱼任务&API任务SQLite管理系统
 
-基于 FastAPI 实现的爬虫管理系统，包含账号管理、任务管理、代理管理、抽样导出等功能。
+基于 FastAPI 实现的小鲸鱼管理系统，包含账号管理、任务管理、代理管理、抽样导出等功能。
 
 ## 项目结构
 
@@ -29,7 +29,7 @@ crawler-management/
 │   │   └── sample_data.py # 抽样数据API
 │   ├── services/          # 业务逻辑
 │   │   ├── __init__.py
-│   │   ├── crawler.py     # 爬虫服务
+│   │   ├── crawler.py     # 小鲸鱼服务
 │   │   ├── sampler.py     # 抽样服务
 │   │   └── exporter.py    # 导出服务
 │   └── utils/             # 工具函数
@@ -59,7 +59,7 @@ crawler-management/
 ## 功能特性
 
 1. 账号管理：增删改查账号信息，管理账号状态
-2. 任务管理：创建、执行、暂停、恢复、终止爬虫任务
+2. 任务管理：创建、执行、暂停、恢复、终止小鲸鱼任务
 3. 代理管理：配置代理信息，支持多种代理策略
 4. 抽样导出：按年份配额抽样数据并导出Excel
 5. 数据展示：美观简洁的Web界面，实时展示任务状态和数据统计
@@ -93,7 +93,7 @@ curl -X PUT "http://localhost:8000/api/accounts/1" \
 # 创建任务
 curl -X POST "http://localhost:8000/api/tasks/" \
 -H "Content-Type: application/json" \
--d '{"task_name": "知乎爬虫任务", "account_name": "cookie内容", "task_type": "crawler"}'
+-d '{"task_name": "知乎小鲸鱼任务", "account_name": "cookie内容", "task_type": "crawler"}'
 
 # 启动任务
 curl -X POST "http://localhost:8000/api/tasks/1/start"

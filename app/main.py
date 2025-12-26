@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     # 初始化Redis
     init_redis()
 
-    # 启动QA爬虫消费者
+    # 启动QA小鲸鱼消费者
     await qa_crawler_consumer.start()
 
     # 初始化并启动心跳服务
@@ -40,7 +40,7 @@ def create_app():
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.VERSION,
-        description="爬虫任务&API任务SQLite管理系统",
+        description="小鲸鱼任务&API任务SQLite管理系统",
         debug=settings.DEBUG,
         lifespan=lifespan
     )

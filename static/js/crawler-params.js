@@ -1,8 +1,8 @@
-// 爬虫参数管理模块
+// 小鲸鱼参数管理模块
 
-// 初始化爬虫参数管理
+// 初始化小鲸鱼参数管理
 function initCrawlerParams() {
-    // 添加爬虫参数按钮
+    // 添加小鲸鱼参数按钮
     document.getElementById('add-crawler-param-btn').addEventListener('click', function() {
         showCrawlerParamModal();
     });
@@ -26,7 +26,7 @@ function initCrawlerParams() {
     loadCrawlerParamsData();
 }
 
-// 加载爬虫参数数据
+// 加载小鲸鱼参数数据
 async function loadCrawlerParamsData() {
     try {
         const skip = (currentPage.crawler_params - 1) * 20;
@@ -59,19 +59,19 @@ async function loadCrawlerParamsData() {
         document.getElementById('crawler-params-page-info').textContent = `第${currentPage.crawler_params}页，共${totalPages.crawler_params}页`;
 
     } catch (error) {
-        console.error('加载爬虫参数数据失败:', error);
-        showNotification('加载爬虫参数数据失败', 'error');
+        console.error('加载小鲸鱼参数数据失败:', error);
+        showNotification('加载小鲸鱼参数数据失败', 'error');
     }
 }
 
-// 编辑爬虫参数
+// 编辑小鲸鱼参数
 function editCrawlerParam(paramId) {
     showCrawlerParamModal(paramId);
 }
 
-// 删除爬虫参数
+// 删除小鲸鱼参数
 async function deleteCrawlerParam(paramId) {
-    if (!confirm('确定要删除这个爬虫参数吗？')) {
+    if (!confirm('确定要删除这个小鲸鱼参数吗？')) {
         return;
     }
 
@@ -81,14 +81,14 @@ async function deleteCrawlerParam(paramId) {
         });
 
         if (response.ok) {
-            showNotification('爬虫参数删除成功', 'success');
+            showNotification('小鲸鱼参数删除成功', 'success');
             loadCrawlerParamsData();
         } else {
             const error = await response.json();
-            showNotification(error.detail || '删除爬虫参数失败', 'error');
+            showNotification(error.detail || '删除小鲸鱼参数失败', 'error');
         }
     } catch (error) {
-        console.error('删除爬虫参数失败:', error);
-        showNotification('删除爬虫参数失败', 'error');
+        console.error('删除小鲸鱼参数失败:', error);
+        showNotification('删除小鲸鱼参数失败', 'error');
     }
 }

@@ -4,10 +4,10 @@ from typing import Optional
 
 class Settings:
     # 应用配置
-    APP_NAME: str = "爬虫管理系统"
+    APP_NAME: str = "小鲸鱼管理系统"
     VERSION: str = "1.0.0"
     DEBUG: bool = True
-    PORT: int = 8000
+    PORT: int = 80
 
     # 数据库配置
     DATABASE_URL: str = "sqlite:///./crawler_management.db"
@@ -25,7 +25,7 @@ class Settings:
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
 
-    # 爬虫配置
+    # 小鲸鱼配置
     CRAWLER_DELAY: float = 1.0  # 请求间隔(秒)
     MAX_RETRIES: int = 3        # 最大重试次数
     TIMEOUT: int = 30           # 请求超时时间(秒)
@@ -39,8 +39,8 @@ class Settings:
 
     # Redis键定义
     REDIS_RECOMMENDATION_URLS_KEY: str = "recommendation:urls"  # 推荐页URL集合
-    REDIS_QA_CRAWLER_URLS_KEY: str = "qa_crawler:urls"  # 问答爬虫URL集合
-    REDIS_QA_CRAWLER_QUEUE_KEY: str = "qa_crawler:queue"  # 问答爬虫数据队列
+    REDIS_QA_CRAWLER_URLS_KEY: str = "qa_crawler:urls"  # 问答小鲸鱼URL集合
+    REDIS_QA_CRAWLER_QUEUE_KEY: str = "qa_crawler:queue"  # 问答小鲸鱼数据队列
     REDIS_RECOMMENDATION_QUEUE_KEY: str = "recommendation:queue"  # 推荐页数据队列
 
 settings = Settings()
