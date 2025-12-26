@@ -10,6 +10,7 @@ from app.config import settings
 from app.database import init_db
 from app.utils.redis import init_redis
 from app.services.heartbeat import heartbeat_service
+from app.workers.qa_crawler_consumer import qa_crawler_consumer
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,12 +21,16 @@ async def lifespan(app: FastAPI):
     # 初始化Redis
     init_redis()
 
+    # 启动QA爬虫消费者
+    await qa_crawler_consumer.start()
+
     # 启动心跳服务
     await heartbeat_service.start()
 
     yield
 
     # 关闭时执行（如果需要）
+    await qa_crawler_consumer.stop()
     await heartbeat_service.stop()
     print("应用关闭")
 
