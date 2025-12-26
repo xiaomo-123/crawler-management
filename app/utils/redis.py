@@ -98,6 +98,7 @@ def init_redis():
             # 测试连接
             _redis_client.ping()
             print("Redis初始化成功")
+            init_recommendation_and_qa_crawler_cache()
             return True
         finally:
             db.close()
