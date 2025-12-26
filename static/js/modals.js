@@ -760,14 +760,20 @@ async function showCrawlerParamModal(paramId = null) {
                 </select>
             </div>
             <div class="form-group">
-                <label for="start_time">开始时间</label>
-                <input type="datetime-local" id="start_time" name="start_time" class="form-control" value="${paramData && paramData.start_time ? paramData.start_time.slice(0, 16) : ''}">
-                <small class="text-muted">留空表示不限</small>
+                <label for="start_time">开始时间(0-23点)</label>
+                <select id="start_time" name="start_time" class="form-control" required>
+                    ${Array.from({length: 24}, (_, i) => 
+                        `<option value="${i}" ${paramData && paramData.start_time === i ? 'selected' : ''}>${i}点</option>`
+                    ).join('')}
+                </select>
             </div>
             <div class="form-group">
-                <label for="end_time">结束时间</label>
-                <input type="datetime-local" id="end_time" name="end_time" class="form-control" value="${paramData && paramData.end_time ? paramData.end_time.slice(0, 16) : ''}">
-                <small class="text-muted">留空表示不限</small>
+                <label for="end_time">结束时间(0-23点)</label>
+                <select id="end_time" name="end_time" class="form-control" required>
+                    ${Array.from({length: 24}, (_, i) => 
+                        `<option value="${i}" ${paramData && paramData.end_time === i ? 'selected' : ''}>${i}点</option>`
+                    ).join('')}
+                </select>
             </div>
             <div class="form-group">
                 <label for="interval_time">间隔时间(小时)</label>
@@ -814,20 +820,12 @@ async function saveCrawlerParam(paramId) {
         url: document.getElementById('url').value,
         api_request: document.getElementById('api_request').value,
         task_type: document.getElementById('task_type').value,
-        start_time: document.getElementById('start_time').value || null,
-        end_time: document.getElementById('end_time').value || null,
+        start_time: parseInt(document.getElementById('start_time').value),
+        end_time: parseInt(document.getElementById('end_time').value),
         interval_time: parseInt(document.getElementById('interval_time').value),
         error_count: parseInt(document.getElementById('error_count').value),
         restart_browser_time: parseInt(document.getElementById('restart_browser_time').value)
     };
-
-    // 转换时间格式
-    if (data.start_time) {
-        data.start_time = data.start_time.replace('T', ' ') + ':00';
-    }
-    if (data.end_time) {
-        data.end_time = data.end_time.replace('T', ' ') + ':00';
-    }
 
     try {
         const url = paramId ? `/api/crawler-params/${paramId}` : '/api/crawler-params/';

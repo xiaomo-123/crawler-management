@@ -42,8 +42,8 @@ async function loadCrawlerParamsData() {
                 <td>${param.id}</td>
                 <td>${param.url.substring(0, 50)}...</td>
                 <td>${param.task_type}</td>
-                <td>${param.start_time || '不限'}</td>
-                <td>${param.end_time || '不限'}</td>
+                <td>${param.start_time}点</td>
+                <td>${param.end_time}点</td>
                 <td>${param.interval_time}小时</td>
                 <td>${param.error_count}次</td>
                 <td>${param.restart_browser_time}小时</td>
