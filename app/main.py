@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
-from app.api import accounts, tasks, proxies, quotas, raw_data, sample_data, exports, redis_configs, utils
+from app.api import accounts, tasks, proxies, quotas, raw_data, sample_data, exports, redis_configs, utils, crawler_params
+from app.models.crawler_param import CrawlerParam
 from app.config import settings
 from app.database import init_db
 from app.utils.redis import init_redis
@@ -53,6 +54,7 @@ def create_app():
     app.include_router(exports.router)
     app.include_router(redis_configs.router)
     app.include_router(utils.router)
+    app.include_router(crawler_params.router)
 
     # 挂载静态文件
     app.mount("/static", StaticFiles(directory="static"), name="static")

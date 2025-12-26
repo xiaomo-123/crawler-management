@@ -19,6 +19,7 @@
                     <li><a href="#proxies" class="nav-link">代理管理</a></li>
                     <li><a href="#quotas" class="nav-link">配额管理</a></li>
                     <li><a href="#redis-configs" class="nav-link">Redis配置</a></li>
+                    <li><a href="#crawler-params" class="nav-link">爬虫参数</a></li>
                     <li><a href="#data" class="nav-link">数据管理</a></li>
                 </ul>
             </nav>
@@ -209,6 +210,39 @@
                 </div>
             </section>
 
+            <!-- 爬虫参数管理 -->
+            <section id="crawler-params" class="page">
+                <h2>爬虫参数管理</h2>
+                <div class="actions">
+                    <button id="add-crawler-param-btn" class="btn btn-primary">添加参数</button>
+                </div>
+                <div class="table-container">
+                    <table id="crawler-params-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>URL地址</th>
+                                <th>任务类型</th>
+                                <th>开始时间</th>
+                                <th>结束时间</th>
+                                <th>间隔时间</th>
+                                <th>异常次数</th>
+                                <th>重启浏览器时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="prev-crawler-params-page" class="btn">上一页</button>
+                    <span id="crawler-params-page-info">第1页，共1页</span>
+                    <button id="next-crawler-params-page" class="btn">下一页</button>
+                </div>
+            </section>
+
             <!-- 数据管理 -->
             <section id="data" class="page">
                 <h2>数据管理</h2>
@@ -364,5 +398,6 @@
     <script src="/static/js/quotas.js"></script>
     <script src="/static/js/redis-configs.js"></script>
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/crawler-params.js"></script>
 </body>
 </html>

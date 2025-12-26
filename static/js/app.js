@@ -5,7 +5,8 @@ let currentPage = {
     proxies: 1,
     redis_configs: 1,
     raw_data: 1,
-    sample_data: 1
+    sample_data: 1,
+    crawler_params: 1
 };
 
 let totalPages = {
@@ -14,7 +15,8 @@ let totalPages = {
     proxies: 1,
     redis_configs: 1,
     raw_data: 1,
-    sample_data: 1
+    sample_data: 1,
+    crawler_params: 1
 };
 
 // DOM加载完成后执行
@@ -39,6 +41,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 初始化Redis配置管理
     initRedisConfigs();
+
+    // 初始化爬虫参数管理
+    initCrawlerParams();
 
     // 初始化数据管理
     initData();
@@ -81,6 +86,9 @@ function initNavigation() {
                     break;
                 case 'redis-configs':
                     loadRedisConfigsData();
+                    break;
+                case 'crawler-params':
+                    loadCrawlerParamsData();
                     break;
                 case 'data':
                     // 默认显示原始数据标签页

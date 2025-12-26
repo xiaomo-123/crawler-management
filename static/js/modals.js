@@ -724,3 +724,133 @@ async function importJsonData() {
         showNotification('导入JSON数据失败', 'error');
     }
 }
+
+// 爬虫参数模态框
+async function showCrawlerParamModal(paramId = null) {
+    let title = paramId ? '编辑爬虫参数' : '添加爬虫参数';
+    let paramData = null;
+
+    // 如果是编辑模式,获取参数数据
+    if (paramId) {
+        try {
+            const response = await fetch(`/api/crawler-params/${paramId}`);
+            if (response.ok) {
+                paramData = await response.json();
+            }
+        } catch (error) {
+            console.error('获取爬虫参数失败:', error);
+        }
+    }
+
+    let content = `
+        <form id="crawler-param-form">
+            <div class="form-group">
+                <label for="url">URL地址</label>
+                <input type="text" id="url" name="url" class="form-control" value="${paramData ? paramData.url : ''}" required>
+            </div>
+            <div class="form-group">
+                <label for="api_request">API请求</label>
+                <textarea id="api_request" name="api_request" class="form-control" rows="5" required>${paramData ? paramData.api_request : ''}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="task_type">任务类型</label>
+                <select id="task_type" name="task_type" class="form-control" required>
+                    <option value="crawler" ${paramData && paramData.task_type === 'crawler' ? 'selected' : ''}>爬虫</option>
+                    <option value="export" ${paramData && paramData.task_type === 'export' ? 'selected' : ''}>导出</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="start_time">开始时间</label>
+                <input type="datetime-local" id="start_time" name="start_time" class="form-control" value="${paramData && paramData.start_time ? paramData.start_time.slice(0, 16) : ''}">
+                <small class="text-muted">留空表示不限</small>
+            </div>
+            <div class="form-group">
+                <label for="end_time">结束时间</label>
+                <input type="datetime-local" id="end_time" name="end_time" class="form-control" value="${paramData && paramData.end_time ? paramData.end_time.slice(0, 16) : ''}">
+                <small class="text-muted">留空表示不限</small>
+            </div>
+            <div class="form-group">
+                <label for="interval_time">间隔时间(小时)</label>
+                <input type="number" id="interval_time" name="interval_time" class="form-control" value="${paramData ? paramData.interval_time : 1}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="error_count">异常次数</label>
+                <input type="number" id="error_count" name="error_count" class="form-control" value="${paramData ? paramData.error_count : 3}" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="restart_browser_time">重启浏览器时间(小时)</label>
+                <input type="number" id="restart_browser_time" name="restart_browser_time" class="form-control" value="${paramData ? paramData.restart_browser_time : 24}" min="1" required>
+            </div>
+        </form>
+    `;
+
+    let footerButtons = [
+        {
+            text: '取消',
+            className: 'btn',
+            onclick: closeModal
+        },
+        {
+            text: '保存',
+            className: 'btn btn-primary',
+            onclick: async function() {
+                await saveCrawlerParam(paramId);
+            }
+        }
+    ];
+
+    createModal(title, content, footerButtons);
+}
+
+// 保存爬虫参数
+async function saveCrawlerParam(paramId) {
+    const form = document.getElementById('crawler-param-form');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const data = {
+        url: document.getElementById('url').value,
+        api_request: document.getElementById('api_request').value,
+        task_type: document.getElementById('task_type').value,
+        start_time: document.getElementById('start_time').value || null,
+        end_time: document.getElementById('end_time').value || null,
+        interval_time: parseInt(document.getElementById('interval_time').value),
+        error_count: parseInt(document.getElementById('error_count').value),
+        restart_browser_time: parseInt(document.getElementById('restart_browser_time').value)
+    };
+
+    // 转换时间格式
+    if (data.start_time) {
+        data.start_time = data.start_time.replace('T', ' ') + ':00';
+    }
+    if (data.end_time) {
+        data.end_time = data.end_time.replace('T', ' ') + ':00';
+    }
+
+    try {
+        const url = paramId ? `/api/crawler-params/${paramId}` : '/api/crawler-params/';
+        const method = paramId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            showNotification(paramId ? '爬虫参数更新成功' : '爬虫参数创建成功', 'success');
+            closeModal();
+            loadCrawlerParamsData();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || '保存失败', 'error');
+        }
+    } catch (error) {
+        console.error('保存爬虫参数失败:', error);
+        showNotification('保存爬虫参数失败', 'error');
+    }
+}
