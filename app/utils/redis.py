@@ -3,6 +3,7 @@ import redis
 from app.config import settings
 from app.database import SessionLocal
 from app.models.redis_config import RedisConfig
+from app.models.raw_data import RawData
 
 # 全局Redis连接池
 _redis_pool = None
@@ -127,3 +128,53 @@ def reload_redis():
 
     # 重新初始化
     return init_redis()
+
+def clear_recommendation_and_qa_crawler_cache():
+    """清空推荐页URL和问答爬虫的Redis缓存"""
+    try:
+        redis_client = get_redis()
+        if redis_client:
+            # 清空推荐页URL缓存
+            redis_client.delete(settings.REDIS_RECOMMENDATION_URLS_KEY)
+            # 清空问答爬虫URL缓存
+            redis_client.delete(settings.REDIS_QA_CRAWLER_URLS_KEY)
+            # 清空问答爬虫数据队列
+            redis_client.delete(settings.REDIS_QA_CRAWLER_QUEUE_KEY)
+            print("已清空推荐页URL和问答爬虫缓存")
+            return True
+        return False
+    except Exception as e:
+        print(f"清空缓存失败: {str(e)}")
+        return False
+
+def init_recommendation_and_qa_crawler_cache():
+    """初始化推荐页URL和问答爬虫缓存，从raw_data表加载所有answer_url"""
+    try:
+        # 先清空现有缓存
+        clear_recommendation_and_qa_crawler_cache()
+        
+        # 从数据库获取所有answer_url
+        db = SessionLocal()
+        try:
+            urls = db.query(RawData.answer_url).all()
+            url_list = [url[0] for url in urls if url[0]]
+            
+            if not url_list:
+                print("没有找到任何answer_url")
+                return 0
+            
+            # 写入Redis
+            redis_client = get_redis()
+            if redis_client:
+                # 添加到推荐页URL集合
+                redis_client.sadd(settings.REDIS_RECOMMENDATION_URLS_KEY, *url_list)
+                # 添加到问答爬虫URL集合
+                redis_client.sadd(settings.REDIS_QA_CRAWLER_URLS_KEY, *url_list)
+                print(f"成功加载 {len(url_list)} 个URL到缓存")
+                return len(url_list)
+            return 0
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"初始化缓存失败: {str(e)}")
+        return 0

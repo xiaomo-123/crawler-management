@@ -1,12 +1,13 @@
 from sqlalchemy.orm import Session
 from app.utils.redis import get_redis
 from app.models.raw_data import RawData
+from app.config import settings
 from typing import List, Optional
 
 class RecommendationService:
     """推荐页URL服务"""
 
-    REDIS_KEY = "recommendation:urls"
+    REDIS_KEY = settings.REDIS_RECOMMENDATION_URLS_KEY
 
     def __init__(self):
         self.redis_client = None

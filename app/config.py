@@ -37,4 +37,9 @@ class Settings:
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
 
+    # Redis键定义
+    REDIS_RECOMMENDATION_URLS_KEY: str = "recommendation:urls"  # 推荐页URL集合
+    REDIS_QA_CRAWLER_URLS_KEY: str = "qa_crawler:urls"  # 问答爬虫URL集合
+    REDIS_QA_CRAWLER_QUEUE_KEY: str = "qa_crawler:queue"  # 问答爬虫数据队列
+
 settings = Settings()

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.utils.redis import get_redis
 from app.models.raw_data import RawData
 from app.models.comment_data import CommentDataFactory
+from app.config import settings
 from typing import List, Optional, Dict, Any
 import json
 from datetime import datetime
@@ -9,10 +10,10 @@ from datetime import datetime
 class QACrawlerService:
     """问答爬虫服务"""
 
-    # Redis键定义
-    REDIS_URL_KEY = "qa_crawler:urls"  # 存储所有URL的集合
-    REDIS_QUEUE_KEY = "qa_crawler:queue"  # 存储待处理数据的队列
-    REDIS_RECOMMENDATION_KEY = "recommendation:urls"  # 推荐页URL集合
+    # Redis键定义（从config.py统一管理）
+    REDIS_URL_KEY = settings.REDIS_QA_CRAWLER_URLS_KEY  # 存储所有URL的集合
+    REDIS_QUEUE_KEY = settings.REDIS_QA_CRAWLER_QUEUE_KEY  # 存储待处理数据的队列
+    REDIS_RECOMMENDATION_KEY = settings.REDIS_RECOMMENDATION_URLS_KEY  # 推荐页URL集合
 
     def __init__(self):
         self.redis_client = None
