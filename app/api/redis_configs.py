@@ -32,7 +32,7 @@ class RedisConfigResponse(RedisConfigBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class RedisConfigTest(BaseModel):
     host: str

@@ -9,7 +9,7 @@ from app.models.crawler_param import CrawlerParam
 from app.config import settings
 from app.database import init_db
 from app.utils.redis import init_redis
-from app.services.heartbeat_new import heartbeat_service
+from app.services.heartbeat import heartbeat_service
 from app.workers.qa_crawler_consumer import qa_crawler_consumer
 
 @asynccontextmanager
