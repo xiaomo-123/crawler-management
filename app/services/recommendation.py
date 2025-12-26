@@ -79,5 +79,17 @@ class RecommendationService:
             print(f"获取随机URL失败: {str(e)}")
             return []
 
+    def add_url(self, url: str) -> bool:
+        """添加URL到推荐页URL缓存"""
+        try:
+            redis_client = self._get_redis()
+            if redis_client:
+                redis_client.sadd(self.REDIS_KEY, url)
+                return True
+            return False
+        except Exception as e:
+            print(f"添加URL到缓存失败: {str(e)}")
+            return False
+
 # 创建服务实例
 recommendation_service = RecommendationService()

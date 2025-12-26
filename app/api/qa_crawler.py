@@ -120,7 +120,14 @@ async def submit_qa_crawler_data(data: QACrawlerData):
     if data.author_url:
         data_dict['author_url'] = str(data.author_url)
     if data.comments_structured:
-        data_dict['comments_structured'] = [comment.dict() for comment in data.comments_structured]
+        # 处理评论数据，确保所有URL字段都转换为字符串
+        comments_list = []
+        for comment in data.comments_structured:
+            comment_dict = comment.dict()
+            if comment_dict.get('author_url'):
+                comment_dict['author_url'] = str(comment_dict['author_url'])
+            comments_list.append(comment_dict)
+        data_dict['comments_structured'] = comments_list
 
     qa_crawler_service.add_to_queue(data_dict)
 

@@ -140,7 +140,12 @@ class QACrawlerService:
                     month = 1
             else:
                 month = 1
-
+            print(f"入库year: {year}, month: {month}")
+            
+            # 获取RawData表的长度+1作为task_id
+            raw_data_count = db.query(RawData).count()
+            task_id = raw_data_count + 1
+            print(f"入库task_id: {task_id}")
             # 创建raw_data记录
             raw_data = RawData(
                 title=data.get('title'),
@@ -153,7 +158,7 @@ class QACrawlerService:
                 author_cert=data.get('author_cert'),
                 author_fans=data.get('author_fans'),
                 year=year,
-                task_id=data.get('task_id', 1)  # 默认任务ID为1
+                task_id=task_id
             )
 
             db.add(raw_data)
@@ -171,7 +176,7 @@ class QACrawlerService:
                     content=comment.get('content'),
                     like_count=comment.get('like_count'),
                     time=comment.get('time'),
-                    raw_data_id=raw_data.id,
+                    raw_data_id=task_id,
                     year=year,
                     month=month
                 )
