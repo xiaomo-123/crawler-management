@@ -30,9 +30,17 @@ class QACrawlerConsumer:
         db = SessionLocal()
         try:
             while self.running:
-                result = qa_crawler_service.process_queue(db, 10)
-                print(f"处理队列结果: 已处理 {result['processed']} 条, 失败 {result['failed']} 条")
+                try:
+                    result = qa_crawler_service.process_queue(db, 10)
+                    print(f"处理队列结果: 已处理 {result['processed']} 条, 失败 {result['failed']} 条")
+                except asyncio.CancelledError:
+                    print("消费者任务被取消，正在关闭...")
+                    break
+                except Exception as e:
+                    print(f"处理队列时发生错误: {str(e)}")
                 await asyncio.sleep(3)
+        except asyncio.CancelledError:
+            print("消费者任务被取消，正在关闭...")
         finally:
             db.close()
 

@@ -72,11 +72,23 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
         import asyncio
         import threading
         
+        # 存储事件循环以便后续清理
+        spider_loop = None
+        
         def run_spider():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(spider.start(crawl_url))
-            loop.close()
+            nonlocal spider_loop
+            spider_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(spider_loop)
+            try:
+                spider_loop.run_until_complete(spider.start(crawl_url))
+            except asyncio.CancelledError:
+                print(f"任务 {task_id} 的爬虫被取消")
+            finally:
+                # 等待所有待处理的任务完成
+                pending = asyncio.all_tasks(spider_loop)
+                if pending:
+                    spider_loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                spider_loop.close()
         
         thread = threading.Thread(target=run_spider, daemon=True)
         thread.start()
@@ -93,6 +105,9 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
             if task.status != 1:  # 任务被停止
                 spider.stop()
                 print(f"任务 {task_id} 已停止")
+                # 等待线程完成，确保事件循环正确关闭
+                if thread.is_alive():
+                    thread.join(timeout=5)
                 break
             time.sleep(1)
 
@@ -112,6 +127,21 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
         db.commit()
 
     finally:
+        # 确保爬虫已停止
+        if spider.is_running():
+            try:
+                # 在新的事件循环中运行stop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(spider.stop())
+                loop.close()
+            except Exception as e:
+                print(f"停止爬虫时出错: {str(e)}")
+        
+        # 等待线程完成
+        if thread.is_alive():
+            thread.join(timeout=5)
+        
         # 从全局管理器中移除
         if task_id in crawler_instances:
             del crawler_instances[task_id]

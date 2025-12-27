@@ -8,7 +8,7 @@ class ControlledSpider:
         interval: int = 5,
         restart_interval: int = 3600,
         time_range: tuple = (0, 24),
-        browser_type: str = "chromium",
+        # browser_type: str = "chromium",
         max_exception: int = 3,  # 最大允许异常次数，超过则停止
         headless: bool = False,
         proxy: str = None,
@@ -18,7 +18,7 @@ class ControlledSpider:
         self.interval = interval
         self.restart_interval = restart_interval
         self.time_range = time_range
-        self.browser_type = browser_type
+        # self.browser_type = browser_type
         self.max_exception = max_exception
         self.headless = headless
         self.proxy = proxy
@@ -33,8 +33,45 @@ class ControlledSpider:
         self.exception_count = 0  # 异常计数器
         self.task = None  # 存储异步任务
 
-    async def _init_browser(self):        
+    async def _init_browser(self):
+        await self._close_browser()
         try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(
+                    headless=False,  # 设置为False可查看浏览器操作过程
+                    slow_mo=50,  # 减慢操作速度以便观察
+                   
+                )
+                # 在这里执行所有的爬虫任务操作
+                # 例如：
+                page = await browser.new_page()
+                
+            # self.playwright = await async_playwright().start()
+            # # browser_cls = getattr(self.playwright, self.browser_type)
+
+            # # 构建启动参数
+            # launch_kwargs = {
+            #     "headless": self.headless,
+            #     "args": ["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+            # }
+            # if self.proxy:
+            #     launch_kwargs["proxy"] = {"server": self.proxy}
+
+            # self.browser = await browser_cls.launch(**launch_kwargs)
+
+            # 构建上下文参数
+            # ctx_kwargs = {
+            #     "viewport": {"width": 1280, "height": 800},
+            # }
+            # if self.storage_state_path:
+            #     ctx_kwargs["storage_state"] = self.storage_state_path
+            # if self.user_agent:
+            #     ctx_kwargs["user_agent"] = self.user_agent
+            # else:
+            #     ctx_kwargs["user_agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+            # self.context = await self.browser.new_context(**ctx_kwargs)
+            # self.page = await self.context.new_page()
                 self.start_time = datetime.now()
                 self.exception_count = 0  # 重启浏览器后重置异常计数
         except Exception as e:
@@ -68,26 +105,11 @@ class ControlledSpider:
         # 定期重启浏览器
         if self.start_time and (datetime.now() - self.start_time).total_seconds() >= self.restart_interval:
             await self._init_browser()
-        
-        browser = None
         try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(
-                    headless=self.headless,
-                    slow_mo=50,
-                    proxy=self.proxy
-                   
-                )
-                self.page = await browser.new_page()
-                if self.user_agent:
-                    await self.page.set_extra_http_headers({"User-Agent": self.user_agent})
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取链接: {url}")
-                await self.page.goto(url, timeout=3000)
-                title = await self.page.title()
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取结果: {title}")
-        except asyncio.CancelledError:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取任务被取消")
-            raise  # 重新抛出CancelledError以便上层处理
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取链接: {url}")
+            await self.page.goto(url, timeout=3000)
+            title = await self.page.title()
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取结果: {title}")
         except Exception as e:
             self.exception_count += 1
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取失败: {str(e)} | 异常次数: {self.exception_count}/{self.max_exception}")
@@ -96,9 +118,6 @@ class ControlledSpider:
                 print(f"异常次数达到上限 {self.max_exception}，自动停止爬虫")
                 await self.stop()
                 return
-        finally:
-            if browser:
-                await browser.close()
         await asyncio.sleep(self.interval)
 
     async def start(self, url: str):
@@ -106,12 +125,8 @@ class ControlledSpider:
         self.task = asyncio.create_task(self._run(url))
 
     async def _run(self, url: str):
-        try:
-            while not self.stop_event.is_set():
-                await self.crawl(url)
-        except asyncio.CancelledError:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬虫任务被取消")
-            raise
+        while not self.stop_event.is_set():
+            await self.crawl(url)
 
     async def stop(self):
         self.stop_event.set()
@@ -122,8 +137,6 @@ class ControlledSpider:
                 await self.task
             except asyncio.CancelledError:
                 pass
-            except Exception as e:
-                print(f"停止爬虫任务时出错: {str(e)}")
         print("爬虫已停止运行")
 
     def is_running(self):

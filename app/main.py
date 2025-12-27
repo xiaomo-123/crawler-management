@@ -22,7 +22,10 @@ async def lifespan(app: FastAPI):
     init_redis()
 
     # 启动QA小鲸鱼消费者
-    await qa_crawler_consumer.start()
+    try:
+        await qa_crawler_consumer.start()
+    except Exception as e:
+        print(f"启动QA小鲸鱼消费者失败: {str(e)}")
 
     # 初始化并启动心跳服务
     heartbeat_service.init_app(app)
@@ -31,7 +34,10 @@ async def lifespan(app: FastAPI):
     yield
 
     # 关闭时执行（如果需要）
-    await qa_crawler_consumer.stop()
+    try:
+        await qa_crawler_consumer.stop()
+    except Exception as e:
+        print(f"停止QA小鲸鱼消费者失败: {str(e)}")
     print("应用关闭")
 
 def create_app():
