@@ -96,7 +96,8 @@ class ControlledSpider:
         if self.start_time and (datetime.now() - self.start_time).total_seconds() >= self.restart_interval:
             await self._init_browser()
         try:
-            await self.page.goto(url, timeout=60000)
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取链接: {url}")
+            await self.page.goto(url, timeout=3000)
             title = await self.page.title()
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取结果: {title}")
         except Exception as e:
@@ -130,4 +131,4 @@ class ControlledSpider:
 
     def is_running(self):
         """判断爬虫是否正在运行"""
-        return not self.stop_event.is_set()
+        return not self.stop_event.is_set() and self.task is not None and not self.task.done()

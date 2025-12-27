@@ -68,8 +68,18 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
         # 保存到全局管理器
         crawler_instances[task_id] = spider
 
-        # 启动爬虫
-        spider.start(crawl_url)
+        # 启动爬虫（在后台线程中运行异步任务）
+        import asyncio
+        import threading
+        
+        def run_spider():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(spider.start(crawl_url))
+            loop.close()
+        
+        thread = threading.Thread(target=run_spider, daemon=True)
+        thread.start()
         print(f"任务 {task_id} 的爬虫已启动")
 
         # 更新任务状态为运行中
@@ -107,16 +117,7 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
             del crawler_instances[task_id]
         db.close()
 
-def get_target_urls() -> List[str]:
-    """获取目标URL列表"""
-    # 这里应该根据实际需求返回要爬取的URL列表
-    # 示例：返回一些知乎回答URL
-    urls = [
-        "https://www.zhihu.com/question/12345678/answer/87654321",
-        "https://www.zhihu.com/question/23456789/answer/98765432",
-        # 更多URL...
-    ]
-    return urls
+
 
 def select_proxy(proxies: List[Proxy]) -> Optional[Proxy]:
     """选择代理"""
