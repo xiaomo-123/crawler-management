@@ -1,16 +1,183 @@
 
 import os
 import pandas as pd
+import time
+import random
+import requests
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 from app.database import SessionLocal
 from app.models.sample_data import SampleData
 from app.models.raw_data import RawData
 from app.models.year_quota import YearQuota
 from app.models.task import Task
+from app.models.proxy import Proxy
+from app.models.account import Account
+from app.utils.redis import get_redis
 from app.config import settings
+import json
+import re
+from bs4 import BeautifulSoup
+from app.services.exporter_task import ControlledExporter
 
-def run_export_task(task_id: int) -> bool:
+# 全局导出实例管理器
+exporter_instances = {}
+
+def run_export_task(task_id: int, url: str = None, api_request: str = None, task_type: str = "export",
+                     interval: int = 5,
+                     restart_interval: int = 3600, time_range: tuple = (0, 24),
+                     max_exception: int = 3):
+    """运行导出任务，使用 ControlledExporter"""
+    db = SessionLocal()
+
+    try:
+        # 获取任务信息
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            print(f"任务ID {task_id} 不存在")
+            return
+
+        # 获取账号信息
+        account = db.query(Account).filter(Account.id == task.account_id).first()
+        if not account:
+            print(f"账号ID {task.account_id} 不存在")
+            task.status = 3  # 失败
+            task.error_message = f"账号ID {task.account_id} 不存在"
+            task.end_time = datetime.now()
+            db.commit()
+            return
+
+        # 获取导出参数
+        export_param = None
+        if task.crawler_param_id:
+            from app.models.crawler_param import CrawlerParam
+            export_param = db.query(CrawlerParam).filter(CrawlerParam.id == task.crawler_param_id).first()
+
+        # 使用导出参数或默认值
+        export_url = url or (export_param.url if export_param else "https://www.baidu.com")
+        export_api_request = api_request or (export_param.api_request if export_param else None)
+        export_task_type = task_type or (export_param.task_type if export_param else "export")
+        export_interval = interval or (export_param.interval_time * 3600 if export_param else 5 * 3600)  # 转换为秒
+        export_restart_interval = restart_interval or (export_param.restart_browser_time * 3600 if export_param else 24 * 3600)  # 转换为秒
+        export_time_range = time_range or ((export_param.start_time, export_param.end_time) if export_param else (0, 24))
+        export_max_exception = max_exception or (export_param.error_count if export_param else 3)
+
+        # 获取账号cookie
+        account_cookie = account.account_name if account else None
+
+        # 获取代理信息
+        proxy = None
+        proxy_obj = db.query(Proxy).filter(Proxy.status == 1).first()
+        if proxy_obj:
+            proxy = f"{proxy_obj.proxy_type}://{proxy_obj.proxy_addr}"
+
+        # 创建 ControlledExporter 实例
+        exporter = ControlledExporter(
+            interval=export_interval,
+            restart_interval=export_restart_interval,
+            time_range=export_time_range,
+            max_exception=export_max_exception,
+            api_request=export_api_request,
+            task_type=export_task_type,
+            storage_state_path="cook"+ str(account.id),            
+            proxy=proxy,
+            cookie=account_cookie,
+            account_id=account.id,
+        )
+
+        # 打印中文参数信息
+        print(f"任务 {task_id} 导出配置:")
+        print(f"  URL地址: {export_url}")
+        print(f"  API请求: {export_api_request}")
+        print(f"  任务类型: {export_task_type}")
+        print(f"  间隔时间: {export_interval // 3600} 小时")
+        print(f"  重启浏览器时间: {export_restart_interval // 3600} 小时")
+        print(f"  时间范围: {export_time_range[0]}:00 - {export_time_range[1]}:00")
+        print(f"  最大异常次数: {export_max_exception}")
+        print(f"  cookie路径: {exporter.storage_state_path}")
+        print(f"  代理: {exporter.proxy}")
+        print(f"  cookie: {account_cookie}")
+        # 保存到全局管理器
+        exporter_instances[task_id] = exporter
+
+        # 启动导出（在后台线程中运行异步任务）
+        import asyncio
+        import threading
+
+        # 存储事件循环以便后续清理
+        exporter_loop = None
+
+        def run_exporter():
+            nonlocal exporter_loop
+            exporter_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(exporter_loop)
+            try:
+                exporter_loop.run_until_complete(exporter.start(export_url))
+            except asyncio.CancelledError:
+                print(f"任务 {task_id} 的导出被取消")
+            finally:
+                # 等待所有待处理的任务完成
+                pending = asyncio.all_tasks(exporter_loop)
+                if pending:
+                    exporter_loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                exporter_loop.close()
+
+        thread = threading.Thread(target=run_exporter, daemon=True)
+        thread.start()
+        print(f"任务 {task_id} 的导出已启动")
+
+        # 更新任务状态为运行中
+        task.status = 1
+        task.start_time = datetime.now()
+        db.commit()
+
+        # 监控任务状态
+        while exporter.is_running():
+            db.refresh(task)
+            if task.status != 1:  # 任务被停止
+                # 使用同步停止方法
+                exporter.stop_sync()
+                print(f"任务 {task_id} 已停止")
+                # 等待线程完成，确保事件循环正确关闭
+                if thread.is_alive():
+                    thread.join(timeout=5)
+                break
+            time.sleep(1)
+
+        # 任务结束
+        if task.status == 1:  # 如果是导出自己停止的
+            task.status = 4  # 完成
+            task.end_time = datetime.now()
+            task.progress = 100
+            db.commit()
+
+    except Exception as e:
+        print(f"导出任务异常: {str(e)}")
+        task.status = 3  # 失败
+        task.error_message = str(e)
+        task.end_time = datetime.now()
+        task.retry_count += 1
+        db.commit()
+
+    finally:
+        # 确保导出已停止
+        if exporter.is_running():
+            try:
+                # 使用同步停止方法
+                exporter.stop_sync()
+            except Exception as e:
+                print(f"停止导出时出错: {str(e)}")
+
+        # 等待线程完成
+        if thread.is_alive():
+            thread.join(timeout=5)
+
+        # 从全局管理器中移除
+        if task_id in exporter_instances:
+            del exporter_instances[task_id]
+        db.close()
+
+def run_export_task_to_excel(task_id: int) -> bool:
     """运行导出任务"""
     db = SessionLocal()
 
@@ -521,4 +688,135 @@ def get_export_files() -> List[Dict]:
     # 按创建时间倒序排列
     files.sort(key=lambda x: x["created_time"], reverse=True)
 
-    return files
+def select_proxy(proxies: List[Proxy]) -> Optional[Proxy]:
+    """选择代理"""
+    if not proxies:
+        return None
+
+    # 过滤可用代理
+    available_proxies = [p for p in proxies if p.status == 1]
+    if not available_proxies:
+        return None
+
+    # 根据策略选择代理
+    strategy = available_proxies[0].strategy  # 使用第一个代理的策略
+
+    if strategy == "轮询":
+        # 简单轮询，每次选择第一个
+        return available_proxies[0]
+    elif strategy == "随机":
+        return random.choice(available_proxies)
+    elif strategy == "失败切换":
+        # 选择最近未失败的代理
+        return available_proxies[0]
+
+    return available_proxies[0]
+
+def parse_page(html: str, url: str) -> Optional[Dict]:
+    """解析页面内容"""
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+
+        # 提取标题
+        title_elem = soup.find("h1", class_="QuestionHeader-title")
+        title = title_elem.text.strip() if title_elem else ""
+
+        # 提取内容
+        content_elem = soup.find("div", class_="RichContent-inner")
+        content = content_elem.text.strip() if content_elem else ""
+
+        # 提取发布时间
+        time_elem = soup.find("span", class_="ContentItem-time")
+        publish_time = ""
+        if time_elem:
+            time_text = time_elem.text.strip()
+            # 尝试提取日期
+            match = re.search(r"(\d{4}-\d{2}-\d{2})", time_text)
+            if match:
+                publish_time = match.group(1)
+
+        # 提取作者信息
+        author_elem = soup.find("div", class_="AuthorInfo")
+        author = ""
+        author_url = ""
+        author_field = ""
+        author_cert = ""
+        author_fans = 0
+
+        if author_elem:
+            # 作者名
+            name_elem = author_elem.find("a", class_="UserLink-link")
+            if name_elem:
+                author = name_elem.text.strip()
+                author_url = "https://www.zhihu.com" + name_elem.get("href", "")
+
+            # 作者领域
+            field_elem = author_elem.find("div", class_="AuthorInfo-badgeText")
+            if field_elem:
+                author_field = field_elem.text.strip()
+
+            # 作者认证
+            cert_elem = author_elem.find("div", class_="AuthorInfo-headline")
+            if cert_elem:
+                author_cert = cert_elem.text.strip()
+
+            # 作者粉丝数
+            fans_elem = author_elem.find("div", class_="NumberBoard-itemValue")
+            if fans_elem:
+                try:
+                    fans_text = fans_elem.text.strip()
+                    # 处理粉丝数中的"万"等单位
+                    if "万" in fans_text:
+                        author_fans = int(float(fans_text.replace("万", "")) * 10000)
+                    else:
+                        author_fans = int(fans_text)
+                except:
+                    author_fans = 0
+
+        return {
+            "title": title,
+            "content": content,
+            "publish_time": publish_time,
+            "author": author,
+            "author_url": author_url,
+            "author_field": author_field,
+            "author_cert": author_cert,
+            "author_fans": author_fans,
+        }
+
+    except Exception as e:
+        print(f"解析页面异常: {str(e)}, URL: {url}")
+        return None
+
+def extract_year(publish_time: str) -> int:
+    """从发布时间中提取年份"""
+    if not publish_time:
+        return 2023  # 默认年份
+
+    # 尝试从YYYY-MM-DD格式中提取年份
+    match = re.search(r"(\d{4})-\d{2}-\d{2}", publish_time)
+    if match:
+        return int(match.group(1))
+
+    # 尝试从其他格式中提取年份
+    match = re.search(r"(\d{4})年", publish_time)
+    if match:
+        return int(match.group(1))
+
+    # 默认返回当前年份
+    return datetime.now().year
+
+def stop_export_task(task_id: int):
+    """停止指定任务的导出"""
+    if task_id in exporter_instances:
+        exporter = exporter_instances[task_id]
+        exporter.stop_sync()
+        print(f"任务 {task_id} 的导出已停止")
+        return True
+    return False
+
+def is_export_running(task_id: int) -> bool:
+    """检查指定任务的导出是否在运行"""
+    if task_id in exporter_instances:
+        return exporter_instances[task_id].is_running()
+    return False

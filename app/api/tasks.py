@@ -215,7 +215,36 @@ async def start_task(task_id: int, background_tasks: BackgroundTasks, db: Sessio
                 background_tasks.add_task(run_crawler_task, task_id, **crawler_params)                  
     elif db_task.task_type == "export":
         from app.services.exporter import run_export_task
-        background_tasks.add_task(run_export_task, task_id)
+        # 获取导出参数
+        export_params = {}
+        if db_task.crawler_param_id:
+            from app.models.crawler_param import CrawlerParam
+            crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == db_task.crawler_param_id).first()
+            if crawler_param:
+                # 将CrawlerParam模型的字段映射到ControlledSpider的参数
+                export_params = {
+                    'url': crawler_param.url,
+                    'api_request': crawler_param.api_request,
+                    'task_type': crawler_param.task_type,
+                    'interval': crawler_param.interval_time * 3600,  # 将小时转换为秒
+                    'restart_interval': crawler_param.restart_browser_time * 3600,  # 将小时转换为秒
+                    'time_range': (crawler_param.start_time, crawler_param.end_time),
+                    'max_exception': crawler_param.error_count
+                }
+
+                # 获取账号cookie
+                account = db.query(Account).filter(Account.id == db_task.account_id, Account.status == 1).first()                # 账号状态为1).first()
+                if account:
+                    print(f"  账号ID: {account.id}")
+                    print(f"  Cookie: {account.account_name[:20] if account.account_name else None}...")
+
+                # 获取代理信息
+                from app.models.proxy import Proxy
+                proxy_obj = db.query(Proxy).filter(Proxy.status == 1).first()
+                if proxy_obj:
+                    proxy = f"{proxy_obj.proxy_type}://{proxy_obj.proxy_addr}"
+                    print(f"  代理: {proxy}")
+                background_tasks.add_task(run_export_task, task_id, **export_params)
 
     db.refresh(db_task)
     return db_task
@@ -240,6 +269,10 @@ async def pause_task(task_id: int, db: Session = Depends(get_db)):
     if db_task.task_type == "crawler":
         from app.services.crawler import stop_crawler_task
         stop_crawler_task(task_id)
+    # 如果是导出任务，调用 stop_export_task
+    elif db_task.task_type == "export":
+        from app.services.exporter import stop_export_task
+        stop_export_task(task_id)
 
     # 更新任务状态为暂停
     db_task.status = 2
@@ -247,36 +280,6 @@ async def pause_task(task_id: int, db: Session = Depends(get_db)):
     db.refresh(db_task)
     return db_task
 
-@router.post("/{task_id}/resume", response_model=TaskResponse)
-async def resume_task(task_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """恢复任务"""
-    db_task = db.query(Task).filter(Task.id == task_id).first()
-    if not db_task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"任务ID {task_id} 不存在"
-        )
-
-    if db_task.status != 2:  # 不在暂停状态
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只能恢复暂停的任务"
-        )
-
-    # 更新任务状态为运行中
-    db_task.status = 1
-    db.commit()
-    
-    # 添加后台任务
-    if db_task.task_type == "crawler":        
-        from app.services.crawler import run_crawler_task
-        background_tasks.add_task(run_crawler_task, task_id)
-    elif db_task.task_type == "export":
-        from app.services.exporter import run_export_task
-        background_tasks.add_task(run_export_task, task_id)
-
-    db.refresh(db_task)
-    return db_task
 
 @router.post("/{task_id}/stop", response_model=TaskResponse)
 async def stop_task(task_id: int, db: Session = Depends(get_db)):
@@ -292,6 +295,10 @@ async def stop_task(task_id: int, db: Session = Depends(get_db)):
     if db_task.task_type == "crawler":
         from app.services.crawler import stop_crawler_task
         stop_crawler_task(task_id)
+    # 如果是导出任务，调用 stop_export_task
+    elif db_task.task_type == "export":
+        from app.services.exporter import stop_export_task
+        stop_export_task(task_id)
 
     # 更新任务状态为暂停
     db_task.status = 2
@@ -321,3 +328,62 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "任务删除成功"}
+@router.post("/{task_id}/resume", response_model=TaskResponse)
+async def resume_task(task_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """恢复任务"""
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"任务ID {task_id} 不存在"
+        )
+
+    if db_task.status != 2:  # 不在暂停状态
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="只能恢复暂停的任务"
+        )
+
+    # 更新任务状态为运行中
+    db_task.status = 1
+    db.commit()
+    
+    # 添加后台任务
+    if db_task.task_type == "crawler":        
+        from app.services.crawler import run_crawler_task
+        background_tasks.add_task(run_crawler_task, task_id)
+    elif db_task.task_type == "export":
+        from app.services.exporter import run_export_task
+        # 获取导出参数
+        export_params = {}
+        if db_task.crawler_param_id:
+            from app.models.crawler_param import CrawlerParam
+            crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == db_task.crawler_param_id).first()
+            if crawler_param:
+                # 将CrawlerParam模型的字段映射到ControlledSpider的参数
+                export_params = {
+                    'url': crawler_param.url,
+                    'api_request': crawler_param.api_request,
+                    'task_type': crawler_param.task_type,
+                    'interval': crawler_param.interval_time * 3600,  # 将小时转换为秒
+                    'restart_interval': crawler_param.restart_browser_time * 3600,  # 将小时转换为秒
+                    'time_range': (crawler_param.start_time, crawler_param.end_time),
+                    'max_exception': crawler_param.error_count
+                }
+
+                # 获取账号cookie
+                account = db.query(Account).filter(Account.id == db_task.account_id, Account.status == 1).first()                # 账号状态为1).first()
+                if account:
+                    print(f"  账号ID: {account.id}")
+                    print(f"  Cookie: {account.account_name[:20] if account.account_name else None}...")
+
+                # 获取代理信息
+                from app.models.proxy import Proxy
+                proxy_obj = db.query(Proxy).filter(Proxy.status == 1).first()
+                if proxy_obj:
+                    proxy = f"{proxy_obj.proxy_type}://{proxy_obj.proxy_addr}"
+                    print(f"  代理: {proxy}")
+                background_tasks.add_task(run_export_task, task_id, **export_params)
+
+    db.refresh(db_task)
+    return db_task

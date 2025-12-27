@@ -1,10 +1,11 @@
+
 import asyncio
 import os
 import shutil
 from datetime import datetime
 from playwright.async_api import async_playwright
 
-class ControlledSpider:
+class ControlledExporter:
     def __init__(
         self,
         interval: int = 5,
@@ -16,7 +17,7 @@ class ControlledSpider:
         user_agent: str = None,
         storage_state_path: str = None,
         api_request: str = None,
-        task_type: str = "crawler",
+        task_type: str = "export",
         cookie: str = None,
         account_id: int = None,
     ):
@@ -69,26 +70,26 @@ class ControlledSpider:
             # 更新 storage_state_path 为完整路径
             self.storage_state_path = child_dir
 
-    async def _init_browser(self):        
+    async def _init_browser(self):
         try:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始初始化浏览器...")
             # 启动新的浏览器实例
             self.playwright = await async_playwright().start()
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Playwright 已启动")
-            
+
             # 启动浏览器
             browser_args = {
                 'headless': self.headless,
                 'slow_mo': 50
             }
-            
+
             # if self.proxy:
             #     browser_args['proxy'] = {'server': self.proxy}
             #     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用代理: {self.proxy}")
-            
+
             self.browser = await self.playwright.chromium.launch(**browser_args)
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 浏览器已启动")
-            
+
             # 创建浏览器上下文
             context_args = {}
             if self.cookie:
@@ -109,21 +110,21 @@ class ControlledSpider:
                     }
                     context_args['storage_state'] = storage_state
                     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用Cookie (账号ID: {self.account_id}): {self.cookie[:50]}...")
-                except json.JSONDecodeError:                  
-                    
+                except json.JSONDecodeError:
+
                     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用Cookie (账号ID: {self.account_id}): {self.cookie[:20]}...")
-            
+
             self.context = await self.browser.new_context(**context_args)
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 浏览器上下文已创建")
-            
+
             # 创建新页面
             self.page = await self.context.new_page()
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 新页面已创建")
-            
+
             if self.user_agent:
                 await self.page.set_extra_http_headers({"User-Agent": self.user_agent})
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] User-Agent 已设置: {self.user_agent}")
-            
+
             self.start_time = datetime.now()
             self.exception_count = 0  # 重启浏览器后重置异常计数
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 浏览器初始化完成")
@@ -132,6 +133,15 @@ class ControlledSpider:
             await self.stop()  # 初始化失败直接停止
 
     async def _close_browser(self):
+        # 保存浏览器状态到文件
+        if self.context and self.storage_state_path:
+            state_file = os.path.join(self.storage_state_path, "state.json")
+            try:
+                await self.context.storage_state(path=state_file)
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 浏览器状态已保存到: {state_file}")
+            except Exception as e:
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 保存浏览器状态失败: {e}")
+
         if self.page:
             await self.page.close()
             self.page = None
@@ -149,54 +159,54 @@ class ControlledSpider:
         current_hour = datetime.now().hour
         return self.time_range[0] <= current_hour < self.time_range[1]
 
-    async def crawl(self, url: str):
+    async def export(self, url: str):
         if self.stop_event.is_set():
             return
         if not self._is_in_time_range():
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 当前时间不在运行时间范围内，跳过本次爬取")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 当前时间不在运行时间范围内，跳过本次导出")
             await asyncio.sleep(self.interval)
             return
         # 检查浏览器是否需要初始化
         if self.page is None:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 浏览器未初始化，开始初始化...")
             await self._init_browser()
-        
+
         # 定期重启浏览器
         if self.start_time and (datetime.now() - self.start_time).total_seconds() >= self.restart_interval:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 达到重启间隔，重启浏览器...")
             await self._init_browser()
-        
+
         # 使用已初始化的浏览器实例
         try:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(
                     headless=self.headless,
                     slow_mo=50
-                   
+
                 )
                 self.page = await browser.new_page()
                 if self.user_agent:
                     await self.page.set_extra_http_headers({"User-Agent": self.user_agent})
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始爬取链接: {url}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始导出链接: {url}")
                 await self.page.goto(url, timeout=3000)
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 页面加载成功")
-                
+
                 # 获取页面标题
                 # title = await self.page.title()
                 # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 页面标题: {title}")
                 # await asyncio.sleep(10000000)
         except asyncio.CancelledError:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取任务被取消")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 导出任务被取消")
             raise  # 重新抛出CancelledError以便上层处理
         except Exception as e:
             self.exception_count += 1
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取失败: {str(e)} | 异常次数: {self.exception_count}/{self.max_exception}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 导出失败: {str(e)} | 异常次数: {self.exception_count}/{self.max_exception}")
             # 异常次数超过阈值，停止任务
             if self.exception_count >= self.max_exception:
-                print(f"异常次数达到上限 {self.max_exception}，自动停止爬虫")
+                print(f"异常次数达到上限 {self.max_exception}，自动停止导出")
                 await self.stop()
                 return
-       
+
         await asyncio.sleep(self.interval)
 
     async def start(self, url: str):
@@ -206,9 +216,9 @@ class ControlledSpider:
     async def _run(self, url: str):
         try:
             while not self.stop_event.is_set():
-                await self.crawl(url)
+                await self.export(url)
         except asyncio.CancelledError:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬虫任务被取消")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 导出任务被取消")
             raise
 
     async def stop(self):
@@ -221,13 +231,13 @@ class ControlledSpider:
             except asyncio.CancelledError:
                 pass
             except Exception as e:
-                print(f"停止爬虫任务时出错: {str(e)}")
-        print("爬虫已停止运行")
-    
+                print(f"停止导出任务时出错: {str(e)}")
+        print("导出已停止运行")
+
     def stop_sync(self):
-        """同步停止方法，用于在非异步上下文中停止爬虫"""
+        """同步停止方法，用于在非异步上下文中停止导出"""
         self.stop_event.set()
 
     def is_running(self):
-        """判断爬虫是否正在运行"""
-        return not self.stop_event.is_set() and self.task is not None and not self.task.done()
+        """判断导出是否正在运行"""
+        return not self.stop_event.is_set()

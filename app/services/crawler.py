@@ -75,10 +75,10 @@ def run_crawler_task(task_id: int, url: str = None, api_request: str = None, tas
             max_exception=crawl_max_exception,
             api_request=crawl_api_request,
             task_type=crawl_task_type,
-            storage_state_path="cookie"+ str(account.id),
-            storage_state_path="cookie1",
+            storage_state_path="cookie"+ str(account.id),           
             proxy=proxy,
             cookie=account_cookie,
+            account_id=account.id,
         )
         
         # 打印中文参数信息
