@@ -3,6 +3,7 @@ import os
 import shutil
 from datetime import datetime
 from playwright.async_api import async_playwright
+from app.config import settings
 
 class ControlledSpider:
     def __init__(
@@ -24,7 +25,7 @@ class ControlledSpider:
         self.restart_interval = restart_interval
         self.time_range = time_range
         self.max_exception = max_exception
-        self.headless = headless
+        self.headless = headless if headless is not None else settings.HEADLESS
         self.proxy = proxy
         self.user_agent = user_agent
         self.storage_state_path = storage_state_path
@@ -82,10 +83,14 @@ class ControlledSpider:
                 'slow_mo': 50
             }
             
-            # if self.proxy:
-            #     browser_args['proxy'] = {'server': self.proxy}
-            #     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用代理: {self.proxy}")
+            if self.proxy:
+                browser_args['proxy'] = {'server': self.proxy}
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用代理: {self.proxy}")
             
+            # 如果设置了浏览器路径，使用该路径
+            if self.storage_state_path:
+                browser_args['executable_path'] = self.storage_state_path
+
             self.browser = await self.playwright.chromium.launch(**browser_args)
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 浏览器已启动")
             
@@ -178,7 +183,7 @@ class ControlledSpider:
                 if self.user_agent:
                     await self.page.set_extra_http_headers({"User-Agent": self.user_agent})
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始爬取链接: {url}")
-                await self.page.goto(url, timeout=3000)
+                await self.page.goto(url, timeout=60000)
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 页面加载成功")
                 
                 # 获取页面标题

@@ -29,6 +29,7 @@ class Settings:
     CRAWLER_DELAY: float = 1.0  # 请求间隔(秒)
     MAX_RETRIES: int = 3        # 最大重试次数
     TIMEOUT: int = 30           # 请求超时时间(秒)
+    HEADLESS: bool = False      # 浏览器是否无头模式
 
     # 抽样配置
     TOTAL_SAMPLE_NUM: int = 10000  # 总抽样条数
