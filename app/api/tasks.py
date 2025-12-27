@@ -198,15 +198,21 @@ async def start_task(task_id: int, background_tasks: BackgroundTasks, db: Sessio
                     'time_range': (crawler_param.start_time, crawler_param.end_time),
                     'max_exception': crawler_param.error_count
                 }
-                print(f"任务 {task_id} 爬虫参数:")
-                print(f"  URL地址: {crawler_params['url']}")
-                print(f"  API请求: {crawler_params['api_request']}")
-                print(f"  任务类型: {crawler_params['task_type']}")
-                print(f"  间隔时间: {crawler_param.interval_time} 小时")
-                print(f"  重启浏览器时间: {crawler_param.restart_browser_time} 小时")
-                print(f"  时间范围: {crawler_params['time_range'][0]}:00 - {crawler_params['time_range'][1]}:00")
-                print(f"  最大异常次数: {crawler_params['max_exception']}")
-        background_tasks.add_task(run_crawler_task, task_id, **crawler_params)
+
+                
+                # 获取账号cookie
+                account = db.query(Account).filter(Account.id == db_task.account_id, Account.status == 1).first()                # 账号状态为1).first()
+                if account:
+                    print(f"  账号ID: {account.id}")
+                    print(f"  Cookie: {account.account_name[:20] if account.account_name else None}...")
+
+                # 获取代理信息
+                from app.models.proxy import Proxy
+                proxy_obj = db.query(Proxy).filter(Proxy.status == 1).first()
+                if proxy_obj:
+                    proxy = f"{proxy_obj.proxy_type}://{proxy_obj.proxy_addr}"
+                    print(f"  代理: {proxy}")  
+                background_tasks.add_task(run_crawler_task, task_id, **crawler_params)                  
     elif db_task.task_type == "export":
         from app.services.exporter import run_export_task
         background_tasks.add_task(run_export_task, task_id)

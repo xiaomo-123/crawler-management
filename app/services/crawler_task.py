@@ -1,4 +1,6 @@
 import asyncio
+import os
+import shutil
 from datetime import datetime
 from playwright.async_api import async_playwright
 
@@ -14,7 +16,8 @@ class ControlledSpider:
         user_agent: str = None,
         storage_state_path: str = None,
         api_request: str = None,
-        task_type: str = "crawler"
+        task_type: str = "crawler",
+        cookie: str = None,
     ):
         self.interval = interval
         self.restart_interval = restart_interval
@@ -26,6 +29,7 @@ class ControlledSpider:
         self.storage_state_path = storage_state_path
         self.api_request = api_request
         self.task_type = task_type
+        self.cookie = cookie
         self.stop_event = asyncio.Event()
         self.browser = None
         self.context = None
@@ -35,13 +39,37 @@ class ControlledSpider:
         self.exception_count = 0  # 异常计数器
         self.task = None  # 存储异步任务
 
+        # 管理存储目录
+        self._manage_storage_directory()
+
+    def _manage_storage_directory(self):
+        """管理存储目录，创建父目录和子目录"""
+        if self.storage_state_path:
+            # 父目录
+            parent_dir = "cookiedata"
+            # 子目录
+            child_dir = os.path.join(parent_dir, self.storage_state_path)
+
+            # 创建父目录（如果不存在）
+            if not os.path.exists(parent_dir):
+                os.makedirs(parent_dir)
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 创建父目录: {parent_dir}")
+
+            # 清空子目录（如果存在）
+            if os.path.exists(child_dir):
+                shutil.rmtree(child_dir)
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 清空子目录: {child_dir}")
+
+            # 创建子目录
+            os.makedirs(child_dir)
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 创建子目录: {child_dir}")
+
+            # 更新 storage_state_path 为完整路径
+            self.storage_state_path = child_dir
+
     async def _init_browser(self):        
         try:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始初始化浏览器...")
-            
-            # 关闭旧的浏览器实例
-            await self._close_browser()
-            
             # 启动新的浏览器实例
             self.playwright = await async_playwright().start()
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Playwright 已启动")
@@ -61,9 +89,20 @@ class ControlledSpider:
             
             # 创建浏览器上下文
             context_args = {}
-            if self.storage_state_path:
-                context_args['storage_state'] = self.storage_state_path
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用存储状态: {self.storage_state_path}")
+            if self.cookie:
+                # 使用cookie和account_id
+                try:
+                    # 解析cookie字符串为字典
+                    import json
+                    cookie_dict = json.loads(self.cookie)
+                    storage_state = {
+                        "cookies": [cookie_dict]
+                    }
+                    context_args['storage_state'] = storage_state
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用Cookie (账号ID: {self.account_id}): {self.cookie[:50]}...")
+                except json.JSONDecodeError:                  
+                    
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用Cookie (账号ID: {self.account_id}): {self.cookie[:20]}...")
             
             self.context = await self.browser.new_context(**context_args)
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 浏览器上下文已创建")
