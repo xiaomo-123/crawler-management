@@ -182,7 +182,21 @@ async def start_task(task_id: int, background_tasks: BackgroundTasks, db: Sessio
     # 添加后台任务
     if db_task.task_type == "crawler":
         from app.services.crawler import run_crawler_task
-        background_tasks.add_task(run_crawler_task, task_id)
+        # 获取爬虫参数
+        crawler_params = {}
+        if db_task.crawler_param_id:
+            from app.models.crawler_param import CrawlerParam
+            crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == db_task.crawler_param_id).first()
+            if crawler_param:
+                crawler_params = {
+                    'url': getattr(crawler_param, 'url', None),
+                    'interval': getattr(crawler_param, 'interval', 5),
+                    'restart_interval': getattr(crawler_param, 'restart_interval', 3600),
+                    'time_range': getattr(crawler_param, 'time_range', (0, 24)),
+                    'browser_type': getattr(crawler_param, 'browser_type', 'chromium'),
+                    'max_exception': getattr(crawler_param, 'max_exception', 3)
+                }
+        background_tasks.add_task(run_crawler_task, task_id, **crawler_params)
     elif db_task.task_type == "export":
         from app.services.exporter import run_export_task
         background_tasks.add_task(run_export_task, task_id)
@@ -205,6 +219,11 @@ async def pause_task(task_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="只能暂停运行中的任务"
         )
+
+    # 如果是爬虫任务，调用 stop_crawler_task
+    if db_task.task_type == "crawler":
+        from app.services.crawler import stop_crawler_task
+        stop_crawler_task(task_id)
 
     # 更新任务状态为暂停
     db_task.status = 2
@@ -231,9 +250,9 @@ async def resume_task(task_id: int, background_tasks: BackgroundTasks, db: Sessi
     # 更新任务状态为运行中
     db_task.status = 1
     db.commit()
-
+    
     # 添加后台任务
-    if db_task.task_type == "crawler":
+    if db_task.task_type == "crawler":        
         from app.services.crawler import run_crawler_task
         background_tasks.add_task(run_crawler_task, task_id)
     elif db_task.task_type == "export":
@@ -253,7 +272,10 @@ async def stop_task(task_id: int, db: Session = Depends(get_db)):
             detail=f"任务ID {task_id} 不存在"
         )
 
-    # 移除状态检查，允许停止任何状态的任务
+    # 如果是爬虫任务，调用 stop_crawler_task
+    if db_task.task_type == "crawler":
+        from app.services.crawler import stop_crawler_task
+        stop_crawler_task(task_id)
 
     # 更新任务状态为暂停
     db_task.status = 2

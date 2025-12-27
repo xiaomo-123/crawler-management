@@ -14,11 +14,16 @@ from app.config import settings
 import json
 import re
 from bs4 import BeautifulSoup
+from app.services.crawler_task import ControlledSpider
 
-def run_crawler_task(task_id: int):
-    """运行小鲸鱼任务"""
+# 全局爬虫实例管理器
+crawler_instances = {}
+
+def run_crawler_task(task_id: int, url: str = None, interval: int = 5, 
+                     restart_interval: int = 3600, time_range: tuple = (0, 24),
+                     browser_type: str = "chromium", max_exception: int = 3):
+    """运行小鲸鱼任务，使用 ControlledSpider"""
     db = SessionLocal()
-    redis = get_redis()
 
     try:
         # 获取任务信息
@@ -28,134 +33,65 @@ def run_crawler_task(task_id: int):
             return
 
         # 获取账号信息
-        account = db.query(Account).filter(Account.account_name == task.account_name).first()
+        account = db.query(Account).filter(Account.id == task.account_id).first()
         if not account:
-            print(f"账号 {task.account_name} 不存在")
+            print(f"账号ID {task.account_id} 不存在")
             task.status = 3  # 失败
-            task.error_message = f"账号 {task.account_name} 不存在"
+            task.error_message = f"账号ID {task.account_id} 不存在"
             task.end_time = datetime.now()
             db.commit()
             return
         
-        # 获取代理列表
-        proxies = db.query(Proxy).filter(Proxy.status == 1).all()
-        if not proxies:
-            print("没有可用的代理")
-            task.status = 3  # 失败
-            task.error_message = "没有可用的代理"
-            task.end_time = datetime.now()
-            db.commit()
-            return
+        # 获取爬虫参数
+        crawler_param = None
+        if task.crawler_param_id:
+            from app.models.crawler_param import CrawlerParam
+            crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == task.crawler_param_id).first()
 
-        # 解析账号cookie
-        cookies = {}
-        try:
-            cookie_dict = json.loads(account.account_name)
-            for key, value in cookie_dict.items():
-                cookies[key] = value
-        except:
-            print("账号cookie格式错误")
-            task.status = 3  # 失败
-            task.error_message = "账号cookie格式错误"
-            task.end_time = datetime.now()
-            db.commit()
-            return
+        # 使用爬虫参数或默认值
+        crawl_url = url or (crawler_param.url if crawler_param else "https://www.baidu.com")
+        crawl_interval = interval or (crawler_param.interval if crawler_param else 5)
+        crawl_restart_interval = restart_interval or (crawler_param.restart_interval if crawler_param else 3600)
+        crawl_time_range = time_range or (crawler_param.time_range if crawler_param else (0, 24))
+        crawl_browser_type = browser_type or (crawler_param.browser_type if crawler_param else "chromium")
+        crawl_max_exception = max_exception or (crawler_param.max_exception if crawler_param else 3)
 
-        # 设置请求头
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-            "Referer": "https://www.zhihu.com/",
-            "Connection": "keep-alive",
-        }
+        # 创建 ControlledSpider 实例
+        spider = ControlledSpider(
+            interval=crawl_interval,
+            restart_interval=crawl_restart_interval,
+            time_range=crawl_time_range,
+            browser_type=crawl_browser_type,
+            max_exception=crawl_max_exception
+        )
 
-        # 获取目标URL列表
-        target_urls = get_target_urls()
-        total_urls = len(target_urls)
-        processed_urls = 0
+        # 保存到全局管理器
+        crawler_instances[task_id] = spider
 
-        # 开始爬取
-        for i, url in enumerate(target_urls):
-            # 检查任务状态
-            db.refresh(task)
-            if task.status != 1:  # 不在运行状态
-                print(f"任务 {task_id} 已停止")
-                return
+        # 启动爬虫
+        spider.start(crawl_url)
+        print(f"任务 {task_id} 的爬虫已启动")
 
-            # 检查URL是否已处理
-            if redis.sismember("processed_urls", url):
-                continue
-
-            # 选择代理
-            proxy = select_proxy(proxies)
-            proxy_dict = {
-                "http": f"{proxy.proxy_type.lower()}://{proxy.proxy_addr}",
-                "https": f"{proxy.proxy_type.lower()}://{proxy.proxy_addr}",
-            } if proxy else None
-
-            # 发送请求
-            try:
-                response = requests.get(
-                    url,
-                    headers=headers,
-                    cookies=cookies,
-                    proxies=proxy_dict,
-                    timeout=settings.TIMEOUT
-                )
-
-                if response.status_code == 200:
-                    # 解析页面内容
-                    data = parse_page(response.text, url)
-
-                    if data:
-                        # 提取年份
-                        year = extract_year(data.get("publish_time", ""))
-
-                        # 保存数据
-                        raw_data = RawData(
-                            title=data.get("title"),
-                            content=data.get("content"),
-                            publish_time=data.get("publish_time"),
-                            answer_url=url,
-                            author=data.get("author"),
-                            author_url=data.get("author_url"),
-                            author_field=data.get("author_field"),
-                            author_cert=data.get("author_cert"),
-                            author_fans=data.get("author_fans"),
-                            year=year,
-                            task_id=task_id
-                        )
-                        db.add(raw_data)
-                        db.commit()
-
-                        # 标记URL已处理
-                        redis.sadd("processed_urls", url)
-
-                        processed_urls += 1
-
-                        # 更新任务进度
-                        progress = int((i + 1) / total_urls * 100)
-                        task.progress = progress
-                        db.commit()
-
-                    # 请求间隔
-                    time.sleep(settings.CRAWLER_DELAY)
-                else:
-                    print(f"请求失败，状态码: {response.status_code}, URL: {url}")
-
-            except Exception as e:
-                print(f"请求异常: {str(e)}, URL: {url}")
-                # 标记代理失败
-                if proxy:
-                    proxy.status = 0
-                    db.commit()
-
-        # 任务完成
-        task.status = 4  # 完成
-        task.end_time = datetime.now()
-        task.progress = 100
+        # 更新任务状态为运行中
+        task.status = 1
+        task.start_time = datetime.now()
         db.commit()
+
+        # 监控任务状态
+        while spider.is_running():
+            db.refresh(task)
+            if task.status != 1:  # 任务被停止
+                spider.stop()
+                print(f"任务 {task_id} 已停止")
+                break
+            time.sleep(1)
+
+        # 任务结束
+        if task.status == 1:  # 如果是爬虫自己停止的
+            task.status = 4  # 完成
+            task.end_time = datetime.now()
+            task.progress = 100
+            db.commit()
 
     except Exception as e:
         print(f"小鲸鱼任务异常: {str(e)}")
@@ -166,6 +102,9 @@ def run_crawler_task(task_id: int):
         db.commit()
 
     finally:
+        # 从全局管理器中移除
+        if task_id in crawler_instances:
+            del crawler_instances[task_id]
         db.close()
 
 def get_target_urls() -> List[str]:
@@ -296,3 +235,18 @@ def extract_year(publish_time: str) -> int:
 
     # 默认返回当前年份
     return datetime.now().year
+
+def stop_crawler_task(task_id: int):
+    """停止指定任务的爬虫"""
+    if task_id in crawler_instances:
+        spider = crawler_instances[task_id]
+        spider.stop()
+        print(f"任务 {task_id} 的爬虫已停止")
+        return True
+    return False
+
+def is_crawler_running(task_id: int) -> bool:
+    """检查指定任务的爬虫是否在运行"""
+    if task_id in crawler_instances:
+        return crawler_instances[task_id].is_running()
+    return False
