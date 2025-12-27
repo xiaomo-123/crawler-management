@@ -134,9 +134,9 @@ class ControlledSpider:
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 页面加载成功")
                 
                 # 获取页面标题
-                title = await self.page.title()
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 页面标题: {title}")
-                await asyncio.sleep(10000000)
+                # title = await self.page.title()
+                # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 页面标题: {title}")
+                # await asyncio.sleep(10000000)
         except asyncio.CancelledError:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 爬取任务被取消")
             raise  # 重新抛出CancelledError以便上层处理

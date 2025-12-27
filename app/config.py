@@ -7,7 +7,7 @@ class Settings:
     APP_NAME: str = "小鲸鱼管理系统"
     VERSION: str = "1.0.0"
     DEBUG: bool = True
-    PORT: int = 80
+    PORT: int = 5432
 
     # 数据库配置
     DATABASE_URL: str = "sqlite:///./crawler_management.db"
