@@ -19,9 +19,10 @@ from app.services.crawler_task import ControlledSpider
 # 全局爬虫实例管理器
 crawler_instances = {}
 
-def run_crawler_task(task_id: int, url: str = None, interval: int = 5, 
+def run_crawler_task(task_id: int, url: str = None, api_request: str = None, task_type: str = "crawler",
+                     interval: int = 5, 
                      restart_interval: int = 3600, time_range: tuple = (0, 24),
-                     browser_type: str = "chromium", max_exception: int = 3):
+                     max_exception: int = 3):
     """运行小鲸鱼任务，使用 ControlledSpider"""
     db = SessionLocal()
 
@@ -50,20 +51,32 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
 
         # 使用爬虫参数或默认值
         crawl_url = url or (crawler_param.url if crawler_param else "https://www.baidu.com")
-        crawl_interval = interval or (crawler_param.interval if crawler_param else 5)
-        crawl_restart_interval = restart_interval or (crawler_param.restart_interval if crawler_param else 3600)
-        crawl_time_range = time_range or (crawler_param.time_range if crawler_param else (0, 24))
-        crawl_browser_type = browser_type or (crawler_param.browser_type if crawler_param else "chromium")
-        crawl_max_exception = max_exception or (crawler_param.max_exception if crawler_param else 3)
+        crawl_api_request = api_request or (crawler_param.api_request if crawler_param else None)
+        crawl_task_type = task_type or (crawler_param.task_type if crawler_param else "crawler")
+        crawl_interval = interval or (crawler_param.interval_time * 3600 if crawler_param else 5 * 3600)  # 转换为秒
+        crawl_restart_interval = restart_interval or (crawler_param.restart_browser_time * 3600 if crawler_param else 24 * 3600)  # 转换为秒
+        crawl_time_range = time_range or ((crawler_param.start_time, crawler_param.end_time) if crawler_param else (0, 24))
+        crawl_max_exception = max_exception or (crawler_param.error_count if crawler_param else 3)
 
         # 创建 ControlledSpider 实例
         spider = ControlledSpider(
             interval=crawl_interval,
             restart_interval=crawl_restart_interval,
             time_range=crawl_time_range,
-            browser_type=crawl_browser_type,
-            max_exception=crawl_max_exception
+            max_exception=crawl_max_exception,
+            api_request=crawl_api_request,
+            task_type=crawl_task_type
         )
+        
+        # 打印中文参数信息
+        # print(f"任务 {task_id} 爬虫配置:")
+        # print(f"  URL地址: {crawl_url}")
+        # print(f"  API请求: {crawl_api_request}")
+        # print(f"  任务类型: {crawl_task_type}")
+        # print(f"  间隔时间: {crawl_interval // 3600} 小时")
+        # print(f"  重启浏览器时间: {crawl_restart_interval // 3600} 小时")
+        # print(f"  时间范围: {crawl_time_range[0]}:00 - {crawl_time_range[1]}:00")
+        # print(f"  最大异常次数: {crawl_max_exception}")
 
         # 保存到全局管理器
         crawler_instances[task_id] = spider
@@ -103,7 +116,8 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
         while spider.is_running():
             db.refresh(task)
             if task.status != 1:  # 任务被停止
-                spider.stop()
+                # 使用同步停止方法
+                spider.stop_sync()
                 print(f"任务 {task_id} 已停止")
                 # 等待线程完成，确保事件循环正确关闭
                 if thread.is_alive():
@@ -130,11 +144,8 @@ def run_crawler_task(task_id: int, url: str = None, interval: int = 5,
         # 确保爬虫已停止
         if spider.is_running():
             try:
-                # 在新的事件循环中运行stop
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(spider.stop())
-                loop.close()
+                # 使用同步停止方法
+                spider.stop_sync()
             except Exception as e:
                 print(f"停止爬虫时出错: {str(e)}")
         
@@ -271,7 +282,7 @@ def stop_crawler_task(task_id: int):
     """停止指定任务的爬虫"""
     if task_id in crawler_instances:
         spider = crawler_instances[task_id]
-        spider.stop()
+        spider.stop_sync()
         print(f"任务 {task_id} 的爬虫已停止")
         return True
     return False

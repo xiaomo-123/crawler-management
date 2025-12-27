@@ -188,14 +188,24 @@ async def start_task(task_id: int, background_tasks: BackgroundTasks, db: Sessio
             from app.models.crawler_param import CrawlerParam
             crawler_param = db.query(CrawlerParam).filter(CrawlerParam.id == db_task.crawler_param_id).first()
             if crawler_param:
+                # 将CrawlerParam模型的字段映射到ControlledSpider的参数
                 crawler_params = {
-                    'url': getattr(crawler_param, 'url', None),
-                    'interval': getattr(crawler_param, 'interval', 5),
-                    'restart_interval': getattr(crawler_param, 'restart_interval', 3600),
-                    'time_range': getattr(crawler_param, 'time_range', (0, 24)),
-                    'browser_type': getattr(crawler_param, 'browser_type', 'chromium'),
-                    'max_exception': getattr(crawler_param, 'max_exception', 3)
+                    'url': crawler_param.url,
+                    'api_request': crawler_param.api_request,
+                    'task_type': crawler_param.task_type,
+                    'interval': crawler_param.interval_time * 3600,  # 将小时转换为秒
+                    'restart_interval': crawler_param.restart_browser_time * 3600,  # 将小时转换为秒
+                    'time_range': (crawler_param.start_time, crawler_param.end_time),
+                    'max_exception': crawler_param.error_count
                 }
+                print(f"任务 {task_id} 爬虫参数:")
+                print(f"  URL地址: {crawler_params['url']}")
+                print(f"  API请求: {crawler_params['api_request']}")
+                print(f"  任务类型: {crawler_params['task_type']}")
+                print(f"  间隔时间: {crawler_param.interval_time} 小时")
+                print(f"  重启浏览器时间: {crawler_param.restart_browser_time} 小时")
+                print(f"  时间范围: {crawler_params['time_range'][0]}:00 - {crawler_params['time_range'][1]}:00")
+                print(f"  最大异常次数: {crawler_params['max_exception']}")
         background_tasks.add_task(run_crawler_task, task_id, **crawler_params)
     elif db_task.task_type == "export":
         from app.services.exporter import run_export_task
